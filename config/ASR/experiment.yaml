@@ -5,7 +5,7 @@ hop_length: 160
 sampling_rate: 16000
 learning_rate: 1e-5
 epochs: 400
-output_mode: 'char'
+output_mode: 'ph'
 
 dataset:
     train:
@@ -35,12 +35,9 @@ data_processing:
     label_key: 0 # will be overwritten inside the code
     downsample_factor: ${hop_length}
         
-model:
-    input_dim: 0 # will be overwritten inside the code
-    hidden_dim: 256
-    num_lstms: 2
-    output_dim: 0 # will be overwritten inside the code
+pl: 
     lr: ${learning_rate}  
     
 defaults:    
     - spec_layer: Mel
+    - model: simpleLSTM

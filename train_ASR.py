@@ -1,4 +1,3 @@
-
 # Useful github libries
 from nnAudio import Spectrogram
 from AudioLoader.Speech import TIMIT
@@ -12,7 +11,8 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
-from models.ASR import SimpleASR
+from models.Tasks import ASR
+import models.ASR_models as Model
 from utils.text_processing import TextTransform, data_processing
 
 # Libraries related to hydra
@@ -55,15 +55,16 @@ def main(cfg):
         
     with open(to_absolute_path(dict_file), 'rb') as f:
         output_dict = pickle.load(f)
-    cfg.model.output_dim = len(output_dict) # number of classes equals to number of entries in the dict
+    print(OmegaConf.to_yaml(cfg)) # Printing out the config file, for debugging        
+    cfg.model.args.output_dim = len(output_dict) # number of classes equals to number of entries in the dict
     
     # Auto inferring input dimension 
     if cfg.spec_layer.type=='STFT':
-        cfg.model.input_dim = cfg.spec_layer.args.n_fft//2+1
+        cfg.model.args.input_dim = cfg.spec_layer.args.n_fft//2+1
     elif cfg.spec_layer.type=='MelSpectrogram':
-        cfg.model.input_dim = cfg.spec_layer.args.n_mels
+        cfg.model.args.input_dim = cfg.spec_layer.args.n_mels
     
-    # print(OmegaConf.to_yaml(cfg)) # Printing out the config file, for debugging
+
 
     text_transform = TextTransform(output_dict, cfg.output_mode) # for text to int conversion layer
 
@@ -77,8 +78,10 @@ def main(cfg):
                               collate_fn=lambda x: data_processing(x,
                                                                    text_transform,
                                                                    **cfg.data_processing))                        
-    
-    model = SimpleASR(spec_layer, text_transform, **cfg.model)
+
+    model = ASR(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args),
+                text_transform,
+                **cfg.pl)
     checkpoint_callback = ModelCheckpoint(monitor="train_ctc_loss",
                                           filename="{epoch:02d}-{val_loss:.2f}",
                                           save_top_k=3,

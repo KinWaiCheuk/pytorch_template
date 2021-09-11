@@ -14,42 +14,20 @@ import contextlib
 # from nnAudio.Spectrogram import MelSpectrogram
 import pandas as pd
 
-class SimpleASR(pl.LightningModule):
+class ASR(pl.LightningModule):
     def __init__(self,
-                 spec_layer,
+                 model,
                  text_transform,
-                 input_dim,
-                 hidden_dim,
-                 num_lstms,
-                 output_dim,
                  lr):
         super().__init__()
         self.text_transform = text_transform        
 #         self.save_hyperparameters() #
         self.lr = lr
-        
-        self.spec_layer = spec_layer
-        self.embedding = nn.Linear(input_dim,hidden_dim)
-        self.bilstm = nn.LSTM(hidden_dim, hidden_dim, batch_first=True, num_layers=num_lstms, bidirectional=True)
-        self.classifier = nn.Linear(hidden_dim*2, output_dim)
-
-    def forward(self, x):
-        spec = self.spec_layer(x) # (B, F, T)
-        spec = torch.log(spec+1e-8)
-        spec = spec.transpose(1,2) # (B, T, F)
-        x = self.embedding(spec)
-        x, _ = self.bilstm(x)
-        pred = self.classifier(x)
-        
-        pred = torch.log_softmax(pred, -1) # CTC loss requires log_softmax
-        
-        output = {"prediction": pred,
-                  "spectrogram": spec}
-        return output
+        self.model = model
 
     def training_step(self, batch, batch_idx):
         x = batch['waveforms']
-        output = self(x)
+        output = self.model(x)
         pred = output["prediction"]
         loss = F.ctc_loss(pred.transpose(0, 1),
                           batch['labels'],
@@ -61,7 +39,7 @@ class SimpleASR(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x = batch['waveforms']
         with torch.no_grad():
-            output = self(x)
+            output = self.model(x)
             pred = output["prediction"]
             spec = output["spectrogram"]
             loss = F.ctc_loss(pred.transpose(0, 1),
@@ -100,7 +78,7 @@ class SimpleASR(pl.LightningModule):
 
 
         with torch.no_grad():
-            pred = self(x)
+            pred = self.model(x)
             max_timesteps = pred.size(1)
             y = y[:,:max_timesteps]
             loss = F.binary_cross_entropy(pred, y)
