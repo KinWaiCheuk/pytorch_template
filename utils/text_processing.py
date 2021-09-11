@@ -35,15 +35,26 @@ class Normalization():
 spec_normalize = Normalization()    
 
 class TextTransform:
-    """Maps characters to integers and vice versa"""
-    def __init__(self, ipa_dict):
+    """Maps characters to integers and vice versa
+       mode: char or word.
+       When char is used, break down the texts by characters.
+       When word is used, break down the texts by words (break at space)
+       When ph is used, break down the texts by phonemics which is same as word"""
+    def __init__(self, ipa_dict, mode):
         self.ipa_dict = ipa_dict
+        self.mode = mode
         reverse_ipa_dict = {}
         for key, value in ipa_dict.items():
             reverse_ipa_dict[value] = key
         self.reverse_ipa_dict = reverse_ipa_dict
+        if mode == 'char':
+            self.text_to_int = self._char_to_int
+            self.int_to_text = self._int_to_char            
+        elif mode == 'word' or mode == 'ph':
+            self.text_to_int = self._word_to_int
+            self.int_to_text = self._int_to_word
 
-    def text_to_int(self, ipa_sequence):
+    def _word_to_int(self, ipa_sequence):
         """ Use a character map and convert text to an integer sequence """
         int_sequence = [] 
 
@@ -54,9 +65,35 @@ class TextTransform:
     #         for c in ipa_sequence.replace('  ', ' ').split(' '): 
             ch = self.ipa_dict[c]
             int_sequence.append(ch)
-
-
         return int_sequence, ipa_sequence
+    
+    def _char_to_int(self, ipa_sequence):
+        """ Use a character map and convert text to an integer sequence """
+        int_sequence = [] 
+
+        # split() should be used instead of spilt(' ')
+        # This prevents ' ' froming appearing as the character
+        # Hence prevents 0 from appearing at the end of the token 
+        for c in ipa_sequence: 
+    #         for c in ipa_sequence.replace('  ', ' ').split(' '): 
+            ch = self.ipa_dict[c]
+            int_sequence.append(ch)
+        return int_sequence, ipa_sequence
+    
+    def _int_to_word(self, labels):
+        """ Use a character map and convert integer labels to an text sequence """
+        string = []
+        for i in labels:
+            string.append(self.reverse_ipa_dict[i]+' ') # seperating each phoneme/word with a space
+        return ''.join(string).replace('<SPACE>', '').replace('  ',' ') # Remove <SPACE>
+    
+    def _int_to_char(self, labels):
+        """ Use a character map and convert integer labels to an text sequence """
+        string = []
+        for i in labels:
+            string.append(self.reverse_ipa_dict[i]) # appending each character back to the sentence
+        return ''.join(string)
+
        
 
     def int_to_text(self, labels):
@@ -68,7 +105,7 @@ class TextTransform:
 #         return ''.join(string).replace('  ',' ')
 
 
-def wav2vec_processing(data, text_transform, input_key='waveform', label_key='utterance', downsample_factor=320):
+def data_processing(data, text_transform, input_key='waveform', label_key='utterance', downsample_factor=320):
     waveforms = []
     labels = []
     input_lengths = []

@@ -1,51 +1,71 @@
-from torch.utils.data import DataLoader
-# from torchaudio.transforms import MelSpectrogram
-from nnAudio.Spectrogram import MelSpectrogram
-# import sys
-# sys.path.insert(0, '../AudioLoader/')
+
+# Useful github libries
+from nnAudio import Spectrogram
 from AudioLoader.Speech import TIMIT
-from IPython.display import Audio
-import matplotlib.pyplot as plt
-import tqdm
-from datetime import datetime
 
-import matplotlib.pyplot as plt
+# Libraries related to PyTorch
+from torch.utils.data import DataLoader
 
+# Libraries related to PyTorch Lightning
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
-import numpy as np
-import os
-
-from omegaconf import DictConfig, OmegaConf
-import hydra
-
+# custom packages
 from models.ASR import SimpleASR
-from utils.text_processing import TextTransform, wav2vec_processing
+from utils.text_processing import TextTransform, data_processing
+
+# Libraries related to hydra
+import hydra
+from hydra.utils import to_absolute_path
+from omegaconf import OmegaConf
+
+# For loading the output class ddictionary
 import pickle
 
-from hydra.utils import get_original_cwd, to_absolute_path
-
-
-@hydra.main(config_path="config", config_name="experiment_asr")
+@hydra.main(config_path="config/ASR", config_name="experiment")
 def main(cfg):
     # Allow users to specify other config files
+    # python train_ASR.py user_config=config/xx.yaml
     if cfg.user_config is not None:
         print(f"{to_absolute_path('config')=}")
         user_config = OmegaConf.load(to_absolute_path(cfg.user_config))
-        config = OmegaConf.merge(cfg, user_config)    
+        cfg = OmegaConf.merge(cfg, user_config)    
     
+    # Loading dataset
     train_dataset = TIMIT(**cfg.dataset.train)
     valid_dataset = TIMIT(**cfg.dataset.valid)
     
-    spec_layer = MelSpectrogram(**cfg.spec_layer)
+    # Creating a spectrogram layer for dataloading
+    SpecLayer = getattr(Spectrogram, cfg.spec_layer.type)
+    spec_layer = SpecLayer(**cfg.spec_layer.args)
     
-    # Text preprocessing
-    with open(to_absolute_path('phonemics_dict'), 'rb') as f:
-        phonemics_dict = pickle.load(f)
-    text_transform = TextTransform(phonemics_dict)
-    data_processing = wav2vec_processing
+    # Auto inferring output mode and output dimension
+    if cfg.output_mode == 'char':
+        dict_file = 'characters_dict'
+        cfg.data_processing.label_key = 'words'
+    elif cfg.output_mode == 'ph':
+        dict_file = 'phonemics_dict'
+        cfg.data_processing.label_key = 'phonemics'        
+    elif cfg.output_mode == 'word':
+        dict_file = 'words_dict'
+        cfg.data_processing.label_key = 'words'        
+    else:
+        raise ValueError(f'{cfg.output_mode=} is not supported')
+        
+    with open(to_absolute_path(dict_file), 'rb') as f:
+        output_dict = pickle.load(f)
+    cfg.model.output_dim = len(output_dict) # number of classes equals to number of entries in the dict
+    
+    # Auto inferring input dimension 
+    if cfg.spec_layer.type=='STFT':
+        cfg.model.input_dim = cfg.spec_layer.args.n_fft//2+1
+    elif cfg.spec_layer.type=='MelSpectrogram':
+        cfg.model.input_dim = cfg.spec_layer.args.n_mels
+    
+    # print(OmegaConf.to_yaml(cfg)) # Printing out the config file, for debugging
+
+    text_transform = TextTransform(output_dict, cfg.output_mode) # for text to int conversion layer
 
     train_loader = DataLoader(train_dataset,
                               **cfg.dataloader.train,

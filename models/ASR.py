@@ -10,20 +10,28 @@ from utils import posterior2pianoroll, extract_notes_wo_velocity, transcription_
 from utils.text_processing import GreedyDecoder
 import fastwer
 import contextlib
-from nnAudio.Spectrogram import MelSpectrogram
+
+# from nnAudio.Spectrogram import MelSpectrogram
 import pandas as pd
 
 class SimpleASR(pl.LightningModule):
-    def __init__(self, spec_layer, text_transform, lr):
+    def __init__(self,
+                 spec_layer,
+                 text_transform,
+                 input_dim,
+                 hidden_dim,
+                 num_lstms,
+                 output_dim,
+                 lr):
         super().__init__()
         self.text_transform = text_transform        
 #         self.save_hyperparameters() #
         self.lr = lr
         
         self.spec_layer = spec_layer
-        self.embedding = nn.Linear(80,256)
-        self.bilstm = nn.LSTM(256, 256, batch_first=True, num_layers=2, bidirectional=True)
-        self.classifier = nn.Linear(256*2, 62)
+        self.embedding = nn.Linear(input_dim,hidden_dim)
+        self.bilstm = nn.LSTM(hidden_dim, hidden_dim, batch_first=True, num_layers=num_lstms, bidirectional=True)
+        self.classifier = nn.Linear(hidden_dim*2, output_dim)
 
     def forward(self, x):
         spec = self.spec_layer(x) # (B, F, T)
