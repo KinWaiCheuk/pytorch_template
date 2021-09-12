@@ -62,6 +62,35 @@ class ASR(pl.LightningModule):
                     self._log_test(decoded_targets, 'Valid/texts_label', max_sentences=4)
 
             self.log_dict(valid_metrics)
+            
+    def test_step(self, batch, batch_idx):
+        x = batch['waveforms']
+        with torch.no_grad():
+            output = self.model(x)
+            pred = output["prediction"]
+            spec = output["spectrogram"]
+            loss = F.ctc_loss(pred.transpose(0, 1),
+                              batch['labels'],
+                              batch['input_lengths'],
+                              batch['label_lengths'])
+            valid_metrics = {"test_ctc_loss": loss}
+
+            pred = pred.cpu().detach()
+            decoded_preds, decoded_targets = GreedyDecoder(pred,
+                                                           batch['labels'],
+                                                           batch['label_lengths'],
+                                                           self.text_transform)
+            PER_batch = fastwer.score(decoded_preds, decoded_targets)/100            
+            valid_metrics['PER'] = PER_batch
+            if batch_idx<4:
+                self.log_images(spec, f'Test/spectrogram')
+                self._log_test(decoded_preds, 'Test/texts_pred', max_sentences=1)
+                if batch_idx==0: # log ground truth
+                    self._log_test(decoded_targets, 'Test/texts_label', max_sentences=1)
+
+            self.log_dict(valid_metrics)     
+
+            
 
     def _log_test(self, texts, tag, max_sentences=4):
         text_list=[]
@@ -69,27 +98,7 @@ class ASR(pl.LightningModule):
             # Avoid using <> tag, which will have conflicts in html markdown
             text_list.append(texts[idx])
         s = pd.Series(text_list, name="IPA")
-        self.logger.experiment.add_text(tag, s.to_markdown(), global_step=self.current_epoch)     
-
-    def test_step(self, batch, batch_idx):
-        x = batch['audio']
-        y = batch['frame']
-        metrics = {}
-
-
-        with torch.no_grad():
-            pred = self.model(x)
-            max_timesteps = pred.size(1)
-            y = y[:,:max_timesteps]
-            loss = F.binary_cross_entropy(pred, y)
-            metrics["test_loss/frame"] = loss.item()
-
-            pred = pred.cpu().detach()[0]
-            y = y.cpu().detach()[0]
-
-            self.transcription_accuracy(pred, y, metrics)
-        self.log_dict(metrics)            
-
+        self.logger.experiment.add_text(tag, s.to_markdown(), global_step=self.current_epoch)
 
     def log_images(self, tensor, key):
         for idx, spec in enumerate(tensor):
