@@ -13,7 +13,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
 from models.Tasks import ASR
-import models.ASR_models as Model
+import models.Models as Model
 from utils.text_processing import TextTransform, data_processing
 
 # Libraries related to hydra
@@ -36,7 +36,7 @@ def main(cfg):
     # Loading dataset
     train_dataset = TIMIT(**cfg.dataset.train)
     test_dataset = TIMIT(**cfg.dataset.test)
-    train_dataset, valid_dataset = random_split(train_dataset, [4000, 620], generator=torch.Generator().manual_seed(0))    
+    train_dataset, valid_dataset = random_split(train_dataset, [4000, 620], generator=torch.Generator().manual_seed(0))
     # Creating a spectrogram layer for dataloading
     print(OmegaConf.to_yaml(cfg)) # Printing out the config file, for debugging         
     SpecLayer = getattr(Spectrogram, cfg.spec_layer.type)
