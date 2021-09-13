@@ -6,16 +6,17 @@ from mir_eval.transcription_velocity import precision_recall_f1_overlap as evalu
 from mir_eval.util import midi_to_hz
 from sklearn.metrics import precision_recall_fscore_support
 
-def posterior2pianoroll(onsets, frames, onset_threshold=0.5, frame_threshold=0.5):
-    onsets = (onsets > onset_threshold).cpu().to(torch.uint8)
-    frames = (frames > frame_threshold).cpu().to(torch.uint8)
-    onset_diff = torch.cat([onsets[:1, :], onsets[1:, :] - onsets[:-1, :]], dim=0) == 1 # Make sure the activation is only 1 time-step
+# def posterior2pianoroll(onsets, frames, onset_threshold=0.5, frame_threshold=0.5):
+#     onsets = (onsets > onset_threshold).cpu().to(torch.uint8)
+#     frames = (frames > frame_threshold).cpu().to(torch.uint8)
+#     onset_diff = torch.cat([onsets[:1, :], onsets[1:, :] - onsets[:-1, :]], dim=0) == 1 # Make sure the activation is only 1 time-step
 
-    onset_diff = onset_diff & (frames==1) # New condition such that both onset and frame on to get a note
+# #     onset_diff = onset_diff & (frames==1) # New condition such that both onset and frame on to get a note
+#     return frames, onset_diff
+#     return onset_diff
 
-    return onset_diff    
     
-def extract_notes_wo_velocity(pianoroll):
+def extract_notes_wo_velocity(frames, onsets):
     """
     Finds the note timings based on the onsets and frames information
     Parameters
@@ -31,21 +32,23 @@ def extract_notes_wo_velocity(pianoroll):
     intervals: np.ndarray of rows containing (onset_index, offset_index)
     velocities: np.ndarray of velocity values
     """
-
+    onset_diff = torch.cat([onsets[:1, :], onsets[1:, :] - onsets[:-1, :]], dim=0) == 1 # Make sure the activation is only 1 time-step
+    onset_diff = onset_diff & (frames==1) # New condition such that both onset and frame on to get a note
+    
     pitches = []
     intervals = []
 
-    for nonzero in torch.nonzero(pianoroll, as_tuple=False):
+    for nonzero in torch.nonzero(onset_diff, as_tuple=False):
         frame = nonzero[0].item()
         pitch = nonzero[1].item()
 
         onset = frame
         offset = frame
 
-        # This while loop is looking for where does the note ends        
-        while pianoroll[offset, pitch].item():
+        # This while loop is looking for where does the note ends
+        while frames[offset, pitch].item():
             offset += 1
-            if offset == pianoroll.shape[0]:
+            if offset == frames.shape[0]:
                 break
 
         # After knowing where does the note start and end, we can return the pitch information (and velocity)        
@@ -56,20 +59,31 @@ def extract_notes_wo_velocity(pianoroll):
     return np.array(pitches), np.array(intervals) 
 
 
-def transcription_accuracy(pred, y, metrics, hop_length, sampling_rate, min_midi):
-    pred_roll = posterior2pianoroll(pred, pred)
+def transcription_accuracy(pred_frame,
+                           pred_onset,
+                           y_frame,
+                           y_onset,
+                           metrics,
+                           hop_length,
+                           sampling_rate,
+                           min_midi,
+                           onset_threshold=0.5,
+                           frame_threshold=0.5):
+    
+    pred_frame = (pred_frame > frame_threshold).cpu().to(torch.uint8)
+    pred_onset = (pred_onset > onset_threshold).cpu().to(torch.uint8)
 
 
-    p, r, f, _ = precision_recall_fscore_support(y.flatten(),
-                                                 pred_roll.flatten(),
+    p, r, f, _ = precision_recall_fscore_support(y_frame.flatten(),
+                                                 pred_frame.flatten(),
                                                  average='binary')
     metrics['metric/frame/precision'] = p
     metrics['metric/frame/recall'] = r
     metrics['metric/frame/f1'] = f           
 
     # Extracting notes
-    p_ref, i_ref = extract_notes_wo_velocity(y)
-    p_est, i_est = extract_notes_wo_velocity(pred_roll)
+    p_ref, i_ref = extract_notes_wo_velocity(y_frame, y_frame)
+    p_est, i_est = extract_notes_wo_velocity(pred_frame, pred_frame)
 
     scaling = hop_length / sampling_rate
 
@@ -84,10 +98,10 @@ def transcription_accuracy(pred, y, metrics, hop_length, sampling_rate, min_midi
     metrics['metric/note/precision'] = p
     metrics['metric/note/recall'] = r
     metrics['metric/note/f1'] = f
-    metrics['metric/note/overlap'] = o     
 
     p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est)
     metrics['metric/note-with-offsets/precision'] = p
     metrics['metric/note-with-offsets/recall'] = r
     metrics['metric/note-with-offsets/f1'] = f
-    metrics['metric/note-with-offsets/overlap'] = o
+    
+    return pred_frame
