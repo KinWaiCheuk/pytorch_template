@@ -1,0 +1,59 @@
+user_config: # path to config file to update
+
+gpus: 1
+hop_length: 512
+sequence_length: 327680
+sampling_rate: 16000
+min_midi: 21
+max_midi: 108
+learning_rate: 1e-5
+epochs: 1000
+
+dataset:
+    train:
+        root: '/workspace/public_data/MusicDataset'
+        groups: 'train'
+        use_cache: False
+        ext_audio: '.flac'
+        preload: True
+        download: False
+        hop_length: ${hop_length}
+        sequence_length: ${sequence_length}
+    test:
+        root: '/workspace/public_data/MusicDataset'
+        groups: 'test'
+        use_cache: False
+        ext_audio: '.flac'        
+        preload: True
+        download: False
+        hop_length: ${hop_length}
+        sequence_length: null
+        
+dataloader:
+    train:
+        batch_size: 16
+        num_workers: 8
+        pin_memory: True
+    valid:
+        batch_size: 16
+        num_workers: 8
+        pin_memory: True
+    test:
+        batch_size: 1
+        num_workers: 8
+        pin_memory: True
+
+pl:
+    lr: ${learning_rate}
+    sr: ${sampling_rate}
+    hop_length: ${hop_length}
+    min_midi: ${min_midi}
+
+defaults:    
+    - spec_layer: Mel
+    - model: CNN_LSTM
+        
+        
+        
+        
+        
