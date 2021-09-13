@@ -5,7 +5,7 @@ torchvision==0.10.0
 torchaudio==0.9.0
 pytorch-lightning==1.4.2
 nnAudio
-AudioLoader
+https://github.com/KinWaiCheuk/AudioLoader.git
 fastwer
 pandas
 tabulate
@@ -17,3 +17,4 @@ omegaconf
 hydra-core==1.1.1
 mir_eval
 scikit-learn
+pydub
