@@ -53,7 +53,7 @@ def main(cfg):
         dict_file = 'words_dict'
         cfg.data_processing.label_key = 'words'        
     else:
-        raise ValueError(f'{cfg.output_mode=} is not supported')
+        raise ValueError(f'cfg.output_mode={cfg.output_mode} is not supported')
         
     with open(to_absolute_path(dict_file), 'rb') as f:
         output_dict = pickle.load(f)
