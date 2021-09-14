@@ -5,9 +5,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from utils import TriStageLRSchedule
-from utils import posterior2pianoroll, extract_notes_wo_velocity, transcription_accuracy
-from utils.text_processing import GreedyDecoder
+from models.utils import Normalization
 import fastwer
 import contextlib
 
@@ -76,12 +74,14 @@ class simpleLinear(nn.Module):
 class CNN_LSTM(nn.Module):
     def __init__(self,
                  spec_layer,
+                 norm_mode,
                  input_dim,
                  hidden_dim=768,
                  output_dim=88):
         super().__init__()
         
-        self.spec_layer = spec_layer        
+        self.spec_layer = spec_layer
+        self.norm_layer = Normalization(mode=norm_mode)
         
         self.cnn = nn.Sequential(
             # layer 0
@@ -114,7 +114,10 @@ class CNN_LSTM(nn.Module):
     def forward(self, x):
         spec = self.spec_layer(x) # (B, F, T)
         spec = torch.log(spec+1e-8)
-        spec = spec.transpose(1,2).unsqueeze(1) # (B, 1, T, F)
+        spec = spec.transpose(1,2) # (B, T, F)
+        spec = self.norm_layer(spec)
+        spec = spec.unsqueeze(1) # (B, 1, T, F)
+
         x = self.cnn(spec) # (B, hidden_dim//8, T, F//4)
         x = x.transpose(1,2).flatten(2)
         x = self.fc(x) # (B, T, hidden_dim//8*F//4)
