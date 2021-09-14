@@ -9,7 +9,7 @@ args:
     pad_mode: 'reflect'
     power: 2.0
     htk: False
-    fmin: 0.0
+    fmin: 30
     fmax: null
     norm: 1
     trainable_mel: False

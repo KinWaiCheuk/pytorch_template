@@ -30,7 +30,6 @@ def my_app(cfg):
     # Allow users to specify other config files
     # python train_ASR.py user_config=config/xx.yaml
     if cfg.user_config is not None:
-        print(f"{to_absolute_path('config')=}")
         user_config = OmegaConf.load(to_absolute_path(cfg.user_config))
         cfg = OmegaConf.merge(cfg, user_config)
         

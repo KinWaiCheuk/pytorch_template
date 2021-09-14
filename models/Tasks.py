@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from utils import TriStageLRSchedule
-from utils import posterior2pianoroll, extract_notes_wo_velocity, transcription_accuracy
+from utils import extract_notes_wo_velocity, transcription_accuracy
 from utils.text_processing import GreedyDecoder
 import fastwer
 import contextlib
@@ -139,7 +139,7 @@ class AMT(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x = batch['audio']
-        y = batch['frame']
+        y = batch['frame']    
         output = self.model(x)
         pred = torch.sigmoid(output["prediction"])
         
@@ -157,7 +157,7 @@ class AMT(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x = batch['audio']
-        y = batch['frame']
+        y = batch['frame']        
         with torch.no_grad():
             output = self.model(x)
             pred = torch.sigmoid(output["prediction"])
@@ -166,8 +166,7 @@ class AMT(pl.LightningModule):
             # removing extra time step occurs in either label or prediction
             max_timesteps = min(pred.size(1), y.size(1))
             y = y[:, :max_timesteps]
-            pred = pred[:, :max_timesteps]
-
+            pred = pred[:, :max_timesteps]    
             l1_loss = torch.norm(pred, 1, 2).mean()
             bce_loss = F.binary_cross_entropy(pred, y)
             loss = bce_loss#+l1_loss
@@ -177,15 +176,20 @@ class AMT(pl.LightningModule):
 
             y = y.cpu().detach()
             pred = pred.cpu().detach()
-            for i, j in zip(pred, y):
-                transcription_accuracy(i, j, metrics, self.hop_length, self.sr, self.min_midi)
+            pred_roll = torch.zeros_like(y)
+            
+            pred_dict = {pred}
+            for idx, (i, j) in enumerate(zip(pred, y)):
+                pred_roll[idx] = transcription_accuracy(i, i,
+                                                        j, j,
+                                                        metrics, self.hop_length, self.sr, self.min_midi)
 
             if batch_idx==0:
-                print(f'{pred.shape=}')
-                self.log_images(pred, f'Valid/pianoroll')
+                self.log_images(pred, f'Valid/posteriorgram')
+                self.log_images(pred_roll, f'Valid/pred_roll')                
                 if self.current_epoch==0:
                     self.log_images(spec, f'Valid/spectrogram')                    
-                    self.log_images(y, f'Valid/ground_truth')                    
+                    self.log_images(y, f'Valid/ground_truth_roll')                    
 
             self.log_dict(metrics)
 
