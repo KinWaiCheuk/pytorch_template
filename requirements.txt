@@ -4,8 +4,8 @@ torch==1.9.0+cu111
 torchvision==0.10.0
 torchaudio==0.9.0
 pytorch-lightning==1.4.2
-git+git://github.com/KinWaiCheuk/nnAudio.git#subdirectory=Installation
-git+git://github.com/KinWaiCheuk/AudioLoader.git
+git+https://github.com/KinWaiCheuk/nnAudio.git#subdirectory=Installation
+git+https://github.com/KinWaiCheuk/AudioLoader.git
 fastwer
 pandas
 tabulate
