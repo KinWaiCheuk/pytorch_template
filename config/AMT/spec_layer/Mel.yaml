@@ -1,0 +1,17 @@
+type: 'MelSpectrogram'
+args:    
+    sr: ${sampling_rate}
+    n_fft: 2048
+    n_mels: 229
+    hop_length: ${hop_length}
+    window: 'hann'
+    center: True
+    pad_mode: 'reflect'
+    power: 2.0
+    htk: False
+    fmin: 30
+    fmax: null
+    norm: 1
+    trainable_mel: False
+    trainable_STFT: False
+    verbose: True

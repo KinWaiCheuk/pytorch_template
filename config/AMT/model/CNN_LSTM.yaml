@@ -1,0 +1,6 @@
+type: 'CNN_LSTM'
+args:
+    norm_mode: 'imagewise'
+    input_dim: 0 # will be overwritten inside the code
+    hidden_dim: 768
+    output_dim: 88 # piano has 88 notes
