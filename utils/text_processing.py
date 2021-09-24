@@ -105,6 +105,63 @@ class TextTransform:
 #         return ''.join(string).replace('  ',' ')
 
 
+
+
+class Speech_Command_label_Transform:
+    """Maps characters to integers and vice versa
+       mode: char or word.
+       When char is used, break down the texts by characters.
+       When word is used, break down the texts by words (break at space)
+       When ph is used, break down the texts by phonemics which is same as word"""
+    def __init__(self, data):
+        self.labels = sorted(list(set(datapoint[2] for datapoint in data)))
+    # ['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow', 'forward', 'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on', 'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual', 'wow', 'yes', 'zero']
+    def label_to_index(self, word):
+        word = word.split("/")[-1]
+        return self.labels.index(word)
+
+
+    def index_to_label(self, index):
+
+        return self.labels[index]
+
+
+
+def speech_command_processing(data, Speech_Command_label_transform, input_key='waveform', label_key='utterance', downsample_factor=320):
+    waveforms = []
+    labels = []
+    # input_lengths = []
+    # label_lengths = []
+    # utterance = []
+    # path = []
+    for batch in data:
+        waveforms.append(batch[0].squeeze(0)) # remove batch dim
+        label = Speech_Command_label_transform.label_to_index(batch[2])
+        labels.append(label)
+
+        # modify this according to the model downsampling rate
+        # input_lengths.append(batch[0].shape[1]//downsample_factor-1)
+        
+        # label_lengths.append(len(label))
+                
+    waveform_padded = nn.utils.rnn.pad_sequence(waveforms, batch_first=True)
+    labels = torch.Tensor(labels)
+    # print("padded",waveform_padded.shape )
+        
+    # labels = nn.utils.rnn.pad_sequence(labels, batch_first=True)
+
+    
+    output_batch = {'waveforms': waveform_padded, # it is waveforms instead of spectrograms, this tiny hack can make the code work with existing training function
+             'labels': labels
+            #  'input_lengths': torch.tensor(input_lengths), 
+            #  'label_lengths': torch.tensor(label_lengths),
+            #  'ipa_utterance': utterance,
+            #  'path': path
+             }
+    return output_batch
+
+
+
 def data_processing(data, text_transform, input_key='waveform', label_key='utterance', downsample_factor=320):
     waveforms = []
     labels = []
@@ -166,7 +223,7 @@ def GreedyDecoder(output, labels, label_lengths, text_transform, blank=0):
         
 #         dist, _, counter = edit_distance(labels[i].tolist()[:label_lengths[i]], pred.tolist())
 #         PERs.append((counter['sub'] + counter['ins'] + counter['del'])/counter['words'])
-        
+
         decodes.append(text_transform.int_to_text(pred.cpu().numpy()))
         targets.append(text_transform.int_to_text(labels[i][:label_lengths[i]].tolist()))
         
