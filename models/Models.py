@@ -94,9 +94,7 @@ class simpleLinear_flatten(nn.Module):
         spec = torch.log(spec+1e-8)
 
         spec = torch.reshape(spec, (spec.shape[0],-1 ))
-        # print("hey check", spec.shape) # 32, 80, 101
 
-        # spec = spec.transpose(1,2) # (B, T, F)
         x = torch.relu(self.linear1(spec))
         x = torch.relu(self.linear2(x))
         x = torch.relu(self.linear3(x))        

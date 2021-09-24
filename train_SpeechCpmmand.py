@@ -74,11 +74,10 @@ def main(cfg):
            
     # Auto inferring input dimension 
     if cfg.spec_layer.type=='STFT':
-        # cfg.model.args.input_dim = cfg.spec_layer.args.n_fft//2+1
-        cfg.model.args.input_dim =  [x for x in train_loader][0]["waveforms"].shape//spec_layer.stride *(cfg.spec_layer.args.n_fft//2+1)   #get from args!/ create 
+        cfg.model.args.input_dim = (cfg.spec_layer.args.n_fft//2+1) *101
+        # cfg.model.args.input_dim =  [x for x in train_loader][0]["waveforms"].shape//spec_layer.stride *(cfg.spec_layer.args.n_fft//2+1)   #get from args!/ create 
     elif cfg.spec_layer.type=='MelSpectrogram':
         cfg.model.args.input_dim = cfg.spec_layer.args.n_mels *101 #change here the dim
-        # cfg.model.args.input_dim =train_loader[0]["waveforms"].shape     
 
     model = Speech_cmd_task(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args), 
                 **cfg.pl)
