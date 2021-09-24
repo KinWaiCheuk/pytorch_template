@@ -171,9 +171,18 @@ def data_processing(data, text_transform, input_key='waveform', label_key='utter
     path = []
     for batch in data:
         waveforms.append(batch[input_key].squeeze(0)) # remove batch dim
-
+#         ipa_sequence = phonemize(utterance.lower(),
+#                              language=language,
+#                              backend='espeak',
+#                              strip=True,
+#                              language_switch='remove-flags',
+#                              separator=separator.Separator(phone=" ", word=" <SPACE> "))
+#         try:
         tokens, ipa_sequence = text_transform.text_to_int(batch[label_key])
-
+#         except Exception as e:
+#             print(' '*100)
+#             print(e)
+#             print(f"batch['path'] = {batch['path']}")
         utterance.append(batch[label_key])
         label = torch.Tensor(tokens)
         
@@ -212,6 +221,8 @@ def GreedyDecoder(output, labels, label_lengths, text_transform, blank=0):
         pred = pred.unique_consecutive()# remove repeated predictions
         pred = pred[pred!=blank] # remove blanks (default: 0)
         
+#         dist, _, counter = edit_distance(labels[i].tolist()[:label_lengths[i]], pred.tolist())
+#         PERs.append((counter['sub'] + counter['ins'] + counter['del'])/counter['words'])
 
         decodes.append(text_transform.int_to_text(pred.cpu().numpy()))
         targets.append(text_transform.int_to_text(labels[i][:label_lengths[i]].tolist()))
