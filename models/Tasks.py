@@ -237,3 +237,38 @@ class AMT(pl.LightningModule):
 
 #         return [optimizer], [{"scheduler":scheduler, "interval": "step"}]
         return [optimizer]
+
+class Speech_cmd_task(pl.LightningModule):
+    def __init__(self,
+                 model,
+                 lr):
+        super().__init__()
+        self.lr = lr
+        self.loss_fn = nn.CrossEntropyLoss()
+        self.model = model
+
+    def training_step(self, batch, batch_idx):
+        x = batch['waveforms']
+        output = self.model(x)
+        loss = self.loss_fn(output["prediction"],batch['labels'].long())      
+        self.log("train_CE_loss", loss, on_step=False, on_epoch=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x = batch['waveforms']
+        with torch.no_grad():
+            output = self.model(x)
+            loss = self.loss_fn(output["prediction"],batch['labels'].long())      
+            self.log("val_CE_loss", loss)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        x = batch['waveforms']
+        with torch.no_grad():
+            output = self.model(x)
+            loss = self.loss_fn(output["prediction"],batch['labels'].long())      
+            self.log("test_CE_loss", loss)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return [optimizer]

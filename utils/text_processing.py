@@ -34,6 +34,41 @@ class Normalization():
     
 spec_normalize = Normalization()    
 
+
+
+
+
+
+class Speech_Command_label_Transform:
+    def __init__(self, data):
+        self.labels = sorted(list(set(datapoint[2] for datapoint in data))) # ['backward', 'bed', 'bird', 'cat', 'dog', 'down', 'eight', 'five', 'follow', 'forward', 'four', 'go', 'happy', 'house', 'learn', 'left', 'marvin', 'nine', 'no', 'off', 'on', 'one', 'right', 'seven', 'sheila', 'six', 'stop', 'three', 'tree', 'two', 'up', 'visual', 'wow', 'yes', 'zero']
+    def label_to_index(self, word):
+        word = word.split("/")[-1]
+        return self.labels.index(word)
+    def index_to_label(self, index):
+        return self.labels[index]
+
+
+
+def speech_command_processing(data, Speech_Command_label_transform, input_key='waveform', label_key='utterance', downsample_factor=320):
+    waveforms = []
+    labels = []
+
+    for batch in data:
+        waveforms.append(batch[0].squeeze(0)) 
+        label = Speech_Command_label_transform.label_to_index(batch[2])
+        labels.append(label)
+                
+    waveform_padded = nn.utils.rnn.pad_sequence(waveforms, batch_first=True)
+    labels = torch.Tensor(labels)
+
+    output_batch = {'waveforms': waveform_padded, 
+             'labels': labels
+             }
+    return output_batch
+
+
+
 class TextTransform:
     """Maps characters to integers and vice versa
        mode: char or word.
