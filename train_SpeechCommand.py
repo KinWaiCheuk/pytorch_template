@@ -33,7 +33,11 @@ def main(cfg):
         user_config = OmegaConf.load(to_absolute_path(cfg.user_config))
         cfg = OmegaConf.merge(cfg, user_config)    
     
-    # Loading dataset
+    # convert relative path to absolute_path
+    cfg.dataset.train.root = to_absolute_path(cfg.dataset.train.root)
+    cfg.dataset.test.root = to_absolute_path(cfg.dataset.test.root)
+    cfg.dataset.val.root = to_absolute_path(cfg.dataset.val.root)
+    # Loading dataset    
     train_dataset = torchaudio.datasets.SPEECHCOMMANDS(**cfg.dataset.train)
     test_dataset = torchaudio.datasets.SPEECHCOMMANDS(**cfg.dataset.test) #change here!
     valid_dataset = torchaudio.datasets.SPEECHCOMMANDS(**cfg.dataset.val)

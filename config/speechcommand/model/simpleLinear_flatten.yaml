@@ -1,0 +1,7 @@
+type: 'simpleLinear_flatten'
+args:
+    input_dim: 0 # will be overwritten inside the code
+    hidden_dim1: 512
+    hidden_dim2: 256
+    hidden_dim3: 128
+    output_dim: 0 # will be overwritten inside the code

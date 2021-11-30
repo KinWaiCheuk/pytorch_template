@@ -1,0 +1,6 @@
+type: 'simpleLSTM'
+args:
+    input_dim: 0 # will be overwritten inside the code
+    hidden_dim: 256
+    num_lstms: 2
+    output_dim: 0 # will be overwritten inside the code
