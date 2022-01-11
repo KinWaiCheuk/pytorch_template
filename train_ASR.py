@@ -12,7 +12,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
-from models.Tasks import ASR
+from tasks.asr import ASR
 import models.Models as Model
 from utils.text_processing import TextTransform, data_processing
 
@@ -24,21 +24,13 @@ from omegaconf import OmegaConf
 # For loading the output class ddictionary
 import pickle
 
-@hydra.main(config_path="config/ASR", config_name="experiment")
+@hydra.main(config_path="config/asr", config_name="experiment")
 def main(cfg):
-    # Allow users to specify other config files
-    # python train_ASR.py user_config=config/xx.yaml
-    if cfg.user_config is not None:
-        print(f"{to_absolute_path('config')=}")
-        user_config = OmegaConf.load(to_absolute_path(cfg.user_config))
-        cfg = OmegaConf.merge(cfg, user_config)    
-    
     # Loading dataset
     train_dataset = TIMIT(**cfg.dataset.train)
     test_dataset = TIMIT(**cfg.dataset.test)
     train_dataset, valid_dataset = random_split(train_dataset, [4000, 620], generator=torch.Generator().manual_seed(0))
-    # Creating a spectrogram layer for dataloading
-    print(OmegaConf.to_yaml(cfg)) # Printing out the config file, for debugging         
+    # Creating a spectrogram layer for dataloading       
     SpecLayer = getattr(Spectrogram, cfg.spec_layer.type)
     spec_layer = SpecLayer(**cfg.spec_layer.args)
     

@@ -12,7 +12,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
-from models.Tasks import Speech_cmd_task
+from tasks.speech_command import SpeechCommand
 import models.Models as Model
 from utils.text_processing import speech_command_processing, Speech_Command_label_Transform
 
@@ -25,14 +25,7 @@ from omegaconf import OmegaConf
 import pickle
 
 @hydra.main(config_path="config/speechcommand", config_name="experiment")
-def main(cfg):
-    # Allow users to specify other config files
-    # python train_ASR.py user_config=config/xx.yaml
-    if cfg.user_config is not None:
-        print(f"{to_absolute_path('config')=}")
-        user_config = OmegaConf.load(to_absolute_path(cfg.user_config))
-        cfg = OmegaConf.merge(cfg, user_config)    
-    
+def main(cfg):    
     # convert relative path to absolute_path
     cfg.dataset.train.root = to_absolute_path(cfg.dataset.train.root)
     cfg.dataset.test.root = to_absolute_path(cfg.dataset.test.root)
@@ -43,7 +36,7 @@ def main(cfg):
     valid_dataset = torchaudio.datasets.SPEECHCOMMANDS(**cfg.dataset.val)
     
     # Creating a spectrogram layer for dataloading
-    print(OmegaConf.to_yaml(cfg)) # Printing out the config file, for debugging         
+#     print(OmegaConf.to_yaml(cfg)) # Printing out the config file, for debugging         
     SpecLayer = getattr(Spectrogram, cfg.spec_layer.type)
     spec_layer = SpecLayer(**cfg.spec_layer.args)
     
@@ -74,7 +67,7 @@ def main(cfg):
     elif cfg.spec_layer.type=='MelSpectrogram':
         cfg.model.args.input_dim = cfg.spec_layer.args.n_mels *101 
 
-    model = Speech_cmd_task(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args), 
+    model = SpeechCommand(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args), 
                 **cfg.pl)
     checkpoint_callback = ModelCheckpoint(monitor="val_CE_loss",
                                           filename="{epoch:02d}-{val_CE_loss:.2f}",  

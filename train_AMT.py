@@ -12,7 +12,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
-from models.Tasks import AMT
+from tasks.amt import AMT
 import models.Models as Model
 from utils.text_processing import TextTransform, data_processing
 
@@ -25,14 +25,8 @@ from omegaconf import OmegaConf
 import pickle
 
 
-@hydra.main(config_path="config/AMT", config_name="experiment")
-def my_app(cfg):
-    # Allow users to specify other config files
-    # python train_ASR.py user_config=config/xx.yaml
-    if cfg.user_config is not None:
-        user_config = OmegaConf.load(to_absolute_path(cfg.user_config))
-        cfg = OmegaConf.merge(cfg, user_config)
-        
+@hydra.main(config_path="config/amt", config_name="experiment")
+def my_app(cfg):       
     # Loading dataset
     train_dataset = MAPS(**cfg.dataset.train)
     test_dataset = MAPS(**cfg.dataset.test)

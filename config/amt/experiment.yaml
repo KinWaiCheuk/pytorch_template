@@ -8,6 +8,7 @@ min_midi: 21
 max_midi: 108
 learning_rate: 1e-5
 epochs: 1000
+download: False
 
 dataset:
     train:
@@ -16,7 +17,7 @@ dataset:
         use_cache: False
         ext_audio: '.flac'
         preload: False
-        download: False
+        download: ${download}
         hop_length: ${hop_length}
         sequence_length: ${sequence_length}
     test:

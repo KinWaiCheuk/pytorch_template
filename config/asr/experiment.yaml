@@ -1,17 +1,16 @@
-user_config: # path to config file to update
-
 gpus: 1
 hop_length: 160
 sampling_rate: 16000
 learning_rate: 1e-5
 epochs: 400
 output_mode: 'ph'
+download: False
 
 dataset:
     train:
         root: '/workspace/public_data/SpeechDataset'
         split: 'train'
-        download: True
+        download: ${download}
         
         
     test:

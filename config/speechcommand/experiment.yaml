@@ -6,24 +6,25 @@ sampling_rate: 16000
 learning_rate: 1e-4
 epochs: 400
 output_mode: 'ph'
+download: False
 
 dataset:
     train:
         subset: "training"
         root: './'
-        download: True
+        download: ${download}
         
         
     test:
         subset: "testing"
         root: './'
-        download: True
+        download: ${download}
         
 
     val:
         subset: "validation"
         root: './'
-        download: True
+        download: ${download}
         
 dataloader:
     train:
