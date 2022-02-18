@@ -26,6 +26,11 @@ import pickle
 
 @hydra.main(config_path="config/asr", config_name="experiment")
 def main(cfg):
+    # converting paths
+    cfg.data_root = to_absolute_path(cfg.data_root)
+    cfg.trainer.resume_from_checkpoint = to_absolute_path(cfg.trainer.resume_from_checkpoint)
+    
+    
     # Loading dataset
     train_dataset = TIMIT(**cfg.dataset.train)
     test_dataset = TIMIT(**cfg.dataset.test)
@@ -80,17 +85,12 @@ def main(cfg):
     model = ASR(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args),
                 text_transform,
                 **cfg.pl)
-    checkpoint_callback = ModelCheckpoint(monitor="valid_ctc_loss",
-                                          filename="{epoch:02d}-{valid_ctc_loss:.2f}-{PER:.2f}",
-                                          save_top_k=3,
-                                          mode="min")
+    checkpoint_callback = ModelCheckpoint(**cfg.model_checkpoint)
     lr_monitor = LearningRateMonitor(logging_interval='step')
     logger = TensorBoardLogger(save_dir=".", version=1, name=f'ASR-{cfg.spec_layer.type}-{cfg.model.type}')
-    trainer = pl.Trainer(gpus=cfg.gpus,
-                         max_epochs=cfg.epochs,
+    trainer = pl.Trainer(**cfg.trainer,
                          callbacks=[checkpoint_callback, lr_monitor],
-                         logger=logger,
-                         check_val_every_n_epoch=1)
+                         logger=logger,)
 
 
     trainer.fit(model, train_loader, valid_loader)
