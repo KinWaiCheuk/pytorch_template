@@ -58,7 +58,7 @@ trainer:
     profiler: 'simple'
     check_val_every_n_epoch: ${val_frequency}
     num_sanity_val_steps: 2
-    resume_from_checkpoint: 'outputs/2022-02-18/18-03-51/ASR-MelSpectrogram-simpleLSTM/version_1/checkpoints/epoch=17-valid_ctc_loss=3.36-PER=0.00.ckpt'    
+    resume_from_checkpoint: null 
 
 pl: 
     lr: ${learning_rate}  

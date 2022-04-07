@@ -28,7 +28,8 @@ import pickle
 def main(cfg):
     # converting paths
     cfg.data_root = to_absolute_path(cfg.data_root)
-    cfg.trainer.resume_from_checkpoint = to_absolute_path(cfg.trainer.resume_from_checkpoint)
+    if cfg.trainer.resume_from_checkpoint:
+        cfg.trainer.resume_from_checkpoint = to_absolute_path(cfg.trainer.resume_from_checkpoint)
     
     
     # Loading dataset
