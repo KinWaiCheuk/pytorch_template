@@ -7,6 +7,7 @@ output_mode: 'ph'
 download: False
 val_frequency: 1
 data_root: './SpeechDataset'
+num_workers: 4
 
 dataset:
     train:
@@ -23,17 +24,17 @@ dataset:
 dataloader:
     train:
         batch_size: 16
-        num_workers: 8
+        num_workers: ${num_workers}
         pin_memory: True
         
     valid:
         batch_size: 32
-        num_workers: 8
+        num_workers: ${num_workers}
         pin_memory: True
         
     test:
         batch_size: 1
-        num_workers: 8
+        num_workers: ${num_workers}
         pin_memory: True
         
 data_processing:
