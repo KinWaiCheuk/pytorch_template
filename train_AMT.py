@@ -27,6 +27,7 @@ import pickle
 
 @hydra.main(config_path="config/amt", config_name="experiment")
 def my_app(cfg):       
+    cfg.data_root = to_absolute_path(cfg.data_root)
     # Loading dataset
     train_dataset = MAPS(**cfg.dataset.train)
     test_dataset = MAPS(**cfg.dataset.test)

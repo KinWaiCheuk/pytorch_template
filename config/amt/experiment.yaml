@@ -9,10 +9,11 @@ max_midi: 108
 learning_rate: 1e-5
 epochs: 1000
 download: False
+data_root: './MusicDataset'
 
 dataset:
     train:
-        root: '/workspace/public_data/MusicDataset'
+        root: ${data_root} 
         groups: 'train'
         use_cache: False
         ext_audio: '.flac'
@@ -21,7 +22,7 @@ dataset:
         hop_length: ${hop_length}
         sequence_length: ${sequence_length}
     test:
-        root: '/workspace/public_data/MusicDataset'
+        root: ${data_root}
         groups: 'test'
         use_cache: False
         ext_audio: '.flac'        
