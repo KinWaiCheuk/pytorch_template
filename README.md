@@ -15,6 +15,10 @@ pytorch_template
 ├── models
 │     ├─Models.py
 │     └─Tasks.py
+├── tasks
+│     ├─amt.py
+│     ├─...
+│     └─speech_command.py
 ├── utils
 ```
 
