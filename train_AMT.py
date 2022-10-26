@@ -1,6 +1,6 @@
 # Useful github libries
 from nnAudio import Spectrogram
-from AudioLoader.Music import MAPS
+from AudioLoader.music.amt import MAPS
 
 # Libraries related to PyTorch
 import torch
@@ -31,7 +31,7 @@ def my_app(cfg):
     # Loading dataset
     train_dataset = MAPS(**cfg.dataset.train)
     test_dataset = MAPS(**cfg.dataset.test)
-    train_dataset, valid_dataset = random_split(train_dataset, [190, 20], generator=torch.Generator().manual_seed(0))
+    train_dataset, valid_dataset = random_split(train_dataset, [110, 29], generator=torch.Generator().manual_seed(0))
 
     # Create dataloaders
     train_loader = DataLoader(train_dataset, **cfg.dataloader.train)

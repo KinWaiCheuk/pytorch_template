@@ -9,27 +9,37 @@ max_midi: 108
 learning_rate: 1e-5
 epochs: 1000
 download: False
-data_root: './MusicDataset'
+data_root: '../../MusicDataset'
 
 dataset:
     train:
         root: ${data_root} 
         groups: 'train'
-        use_cache: False
-        ext_audio: '.flac'
-        preload: False
+        data_type: 'MUS'
         download: ${download}
-        hop_length: ${hop_length}
-        sequence_length: ${sequence_length}
-    test:
-        root: ${data_root}
-        groups: 'test'
-        use_cache: False
-        ext_audio: '.flac'        
         preload: False
-        download: False
-        hop_length: ${hop_length}
         sequence_length: ${sequence_length}
+        seed: 42
+        hop_length: ${hop_length}
+        max_midi: 108
+        min_midi: 21
+        ext_audio: '.wav'
+        sampling_rate: 16000
+        overlap: False
+    test:
+        root: ${data_root} 
+        groups: 'test'
+        data_type: 'MUS'
+        download: False
+        preload: False
+        sequence_length: ${sequence_length}
+        seed: 42
+        hop_length: ${hop_length}
+        max_midi: 108
+        min_midi: 21
+        ext_audio: '.wav'
+        sampling_rate: 16000
+        overlap: True
         
 dataloader:
     train:
