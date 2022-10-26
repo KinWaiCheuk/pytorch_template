@@ -40,7 +40,10 @@ If you want to try a new model on the existing ASR task, simply add it to `model
 `git clone https://github.com/KinWaiCheuk/pytorch_template.git`
 
 ### Step2: Install the dependencies
-`pip install -r requirements.txt`
+
+`pip install pybind11 && pip install -r requirements.txt`
+
+`fastwer` requires `pybind11` to be installed first. Otherwise an error might error
 
 ### Step3: Train a model
 `python train_ASR.py`

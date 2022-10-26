@@ -6,7 +6,7 @@ torchaudio==0.9.0
 pytorch-lightning==1.4.2
 pybind11
 git+https://github.com/KinWaiCheuk/nnAudio.git#subdirectory=Installation
-AudioLoader==0.0.4
+AudioLoader==0.1.2
 torchmetrics==0.6.0
 setuptools==59.5.0
 fastwer
