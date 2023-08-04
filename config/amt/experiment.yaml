@@ -3,13 +3,13 @@ user_config: # path to config file to update
 gpus: 1
 hop_length: 512
 sequence_length: 327680
-sampling_rate: 16000
+sampling_rate: 44100
 min_midi: 21
 max_midi: 108
 learning_rate: 1e-5
 epochs: 1000
-download: False
-data_root: '../../MusicDataset'
+download: True
+data_root: '/data2/kinwai'
 
 dataset:
     train:
@@ -24,7 +24,7 @@ dataset:
         max_midi: 108
         min_midi: 21
         ext_audio: '.wav'
-        sampling_rate: 16000
+        sampling_rate: ${sampling_rate}
         overlap: False
     test:
         root: ${data_root} 
@@ -38,7 +38,7 @@ dataset:
         max_midi: 108
         min_midi: 21
         ext_audio: '.wav'
-        sampling_rate: 16000
+        sampling_rate: ${sampling_rate}
         overlap: True
         
 dataloader:
