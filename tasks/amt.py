@@ -6,8 +6,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from utils import TriStageLRSchedule
-from utils import extract_notes_wo_velocity, transcription_accuracy
-from utils.text_processing import GreedyDecoder
+from utils import Evaluator
 
 # from nnAudio.Spectrogram import MelSpectrogram
 import pandas as pd
@@ -30,6 +29,14 @@ class AMT(pl.LightningModule):
         self.sr = sr
         self.hop_length = hop_length
         self.min_midi = min_midi
+
+        self.evaluator = Evaluator(
+            hop_length,
+            sr,
+            min_midi,
+            onset_threshold=0.5,
+            frame_threshold=0.5
+            )
 
     def training_step(self, batch, batch_idx):
         x = batch['audio']
@@ -60,23 +67,27 @@ class AMT(pl.LightningModule):
         # removing extra time step occurs in either label or prediction
         max_timesteps = min(pred.size(1), y.size(1))
         y = y[:, :max_timesteps]
-        pred = pred[:, :max_timesteps]    
+        pred = pred[:, :max_timesteps]
+
         l1_loss = torch.norm(pred, 1, 2).mean()
         bce_loss = F.binary_cross_entropy(pred, y)
-        loss = bce_loss#+l1_loss
-        metrics = {"Valid/L1": l1_loss,
-                   "Valid/BCE": bce_loss}
-#                        "Valid/L1": l1_loss}
+        self.log("Valid/L1", l1_loss)
+        self.log("Valid/BCE", bce_loss)
 
         y = y.cpu().detach()
         pred = pred.cpu().detach()
         pred_roll = torch.zeros_like(y)
 
-        pred_dict = {pred}
-        for idx, (i, j) in enumerate(zip(pred, y)):
-            pred_roll[idx] = transcription_accuracy(i, i,
-                                                    j, j,
-                                                    metrics, self.hop_length, self.sr, self.min_midi)
+        # looping over samples in batch
+        for sample_idx in range(y.size(0)):
+            transcription_metrics = self.evaluator.evaluate(pred[sample_idx], pred[sample_idx], y[sample_idx], y[sample_idx])
+            for key, value in transcription_metrics.items():
+                self.log(f"Valid/{key}", value)
+
+        # for idx, (i, j) in enumerate(zip(pred, y)):
+        #     pred_roll[idx] = transcription_accuracy(i, i,
+        #                                             j, j,
+        #                                             metrics, self.hop_length, self.sr, self.min_midi)
 
         if batch_idx==0:
             self.log_images(pred, f'Valid/posteriorgram')
@@ -84,8 +95,6 @@ class AMT(pl.LightningModule):
             if self.current_epoch==0:
                 self.log_images(spec, f'Valid/spectrogram')                    
                 self.log_images(y, f'Valid/ground_truth_roll')                    
-
-        self.log_dict(metrics)
 
 
     def test_step(self, batch, batch_idx):

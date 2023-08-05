@@ -38,7 +38,12 @@ def extract_notes_wo_velocity(frames, onsets):
     pitches = []
     intervals = []
 
-    for nonzero in torch.nonzero(onset_diff, as_tuple=False):
+    torch.save(onset_diff, 'onset_diff.pt')
+    # find the non-zero indices for onset_diff
+    # the non-zero indices are the time (frame) and pitch information
+    nonzero_tensor = torch.nonzero(onset_diff, as_tuple=False)
+
+    for nonzero in nonzero_tensor:
         frame = nonzero[0].item()
         pitch = nonzero[1].item()
 
@@ -59,49 +64,106 @@ def extract_notes_wo_velocity(frames, onsets):
     return np.array(pitches), np.array(intervals) 
 
 
-def transcription_accuracy(pred_frame,
-                           pred_onset,
-                           y_frame,
-                           y_onset,
-                           metrics,
-                           hop_length,
-                           sampling_rate,
-                           min_midi,
-                           onset_threshold=0.5,
-                           frame_threshold=0.5):
+class Evaluator():
+    """
+    A class for evaluating transcription accuracy.
+    Current version only support one sample of the shape (T, F)
+    Example usage:
+    evaluator = Evaluator(hop_length, sr, min_midi)
+    metrics = evaluator.evaluate(pred_frame, pred_onset, y_frame, y_onset)
     
-    pred_frame = (pred_frame > frame_threshold).cpu().to(torch.uint8)
-    pred_onset = (pred_onset > onset_threshold).cpu().to(torch.uint8)
+    Parameters
+    ----------
+    hop_length: int
+        Hop length in samples
+    sr: int
+        Sampling rate
+    min_midi: int
+        Minimum midi number
+    onset_threshold: float
+        Threshold for onset detection
+    frame_threshold: float
+        Threshold for frame detection
+    """
+
+    def __init__(
+        self,
+        hop_length,
+        sampling_rate,
+        min_midi,
+        onset_threshold=0.5,
+        frame_threshold=0.5            
+    ):
+        
+        self.hop_length = hop_length
+        self.sampling_rate = sampling_rate
+        self.min_midi = min_midi
+        self.onset_threshold = onset_threshold
+        self.frame_threshold = frame_threshold
 
 
-    p, r, f, _ = precision_recall_fscore_support(y_frame.flatten(),
-                                                 pred_frame.flatten(),
-                                                 average='binary')
-    metrics['metric/frame/precision'] = p
-    metrics['metric/frame/recall'] = r
-    metrics['metric/frame/f1'] = f           
+    def evaluate(
+        self,
+        pred_frame,
+        pred_onset,
+        y_frame,
+        y_onset
+    ):
+        
+        """
+        A method for evaluating transcription accuracy.
+        Current version only support one sample of the shape (T, F).
+        T = frames
+        F = bins
+        
+        Parameters
+        ----------
+        pred_frame: torch.FloatTensor, shape = [frames, bins]
+        pred_onset: torch.FloatTensor, shape = [frames, bins]
+        y_frame: torch.FloatTensor, shape = [frames, bins]
+        y_onset: torch.FloatTensor, shape = [frames, bins]
 
-    # Extracting notes
-    p_ref, i_ref = extract_notes_wo_velocity(y_frame, y_frame)
-    p_est, i_est = extract_notes_wo_velocity(pred_frame, pred_frame)
-
-    scaling = hop_length / sampling_rate
-
-    # Converting time steps to seconds and midi number to frequency
-    i_ref = (i_ref * scaling).reshape(-1, 2)
-    p_ref = np.array([midi_to_hz(min_midi + midi) for midi in p_ref])
-    i_est = (i_est * scaling).reshape(-1, 2)
-    p_est = np.array([midi_to_hz(min_midi + midi) for midi in p_est])          
-
-    # Calcualte note-wise metrics
-    p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est, offset_ratio=None)
-    metrics['metric/note/precision'] = p
-    metrics['metric/note/recall'] = r
-    metrics['metric/note/f1'] = f
-
-    p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est)
-    metrics['metric/note-with-offsets/precision'] = p
-    metrics['metric/note-with-offsets/recall'] = r
-    metrics['metric/note-with-offsets/f1'] = f
+        Returns
+        -------
+        metrics: dict  
+            A dictionary of different metrics such as frame, note, and note with offsets.
+            Each metric consists of (p=precision, r=recall, f=f1).
+        """        
     
-    return pred_frame
+        metrics = {}
+        
+        pred_frame = (pred_frame > self.frame_threshold).cpu().to(torch.uint8)
+        pred_onset = (pred_onset > self.onset_threshold).cpu().to(torch.uint8)
+
+
+        p, r, f, _ = precision_recall_fscore_support(y_frame.flatten(),
+                                                    pred_frame.flatten(),
+                                                    average='binary')
+        metrics['frame/precision'] = p
+        metrics['frame/recall'] = r
+        metrics['frame/f1'] = f           
+
+        # Extracting notes
+        p_ref, i_ref = extract_notes_wo_velocity(y_frame, y_onset)
+        p_est, i_est = extract_notes_wo_velocity(pred_frame, pred_onset)
+
+        scaling = self.hop_length / self.sampling_rate
+
+        # Converting time steps to seconds and midi number to frequency
+        i_ref = (i_ref * scaling).reshape(-1, 2)
+        p_ref = np.array([midi_to_hz(self.min_midi + midi) for midi in p_ref])
+        i_est = (i_est * scaling).reshape(-1, 2)
+        p_est = np.array([midi_to_hz(self.min_midi + midi) for midi in p_est])          
+
+        # Calcualte note-wise metrics
+        p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est, offset_ratio=None)
+        metrics['note/precision'] = p
+        metrics['note/recall'] = r
+        metrics['note/f1'] = f
+
+        p, r, f, o = evaluate_notes(i_ref, p_ref, i_est, p_est)
+        metrics['note-with-offsets/precision'] = p
+        metrics['note-with-offsets/recall'] = r
+        metrics['note-with-offsets/f1'] = f
+        
+        return metrics
