@@ -133,7 +133,8 @@ class CNN_LSTM(nn.Module):
         
         self.bilstm = nn.LSTM(hidden_dim, hidden_dim//2, batch_first=True, num_layers=1, bidirectional=True)
         
-        self.classifier = nn.Linear(hidden_dim, output_dim)
+        self.frame_classifier = nn.Linear(hidden_dim, output_dim)
+        self.onset_classifier = nn.Linear(hidden_dim, output_dim)
         
     def forward(self, x):
         spec = self.spec_layer(x) # (B, F, T)
@@ -147,10 +148,12 @@ class CNN_LSTM(nn.Module):
         x = self.fc(x) # (B, T, hidden_dim//8*F//4)
         x, _ = self.bilstm(x)
         
-        pred = self.classifier(x)
+        pred_frame = self.frame_classifier(x)
+        pred_onset = self.onset_classifier(x)
         
-        output = {"prediction": pred,
-                  "spectrogram": spec}
+        output = {"frame": pred_frame,
+                  "onset": pred_onset,
+                  "spec": spec}
         return output        
         
         

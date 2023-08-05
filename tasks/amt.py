@@ -1,6 +1,4 @@
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
@@ -37,92 +35,105 @@ class AMT(pl.LightningModule):
             onset_threshold=0.5,
             frame_threshold=0.5
             )
-
-    def training_step(self, batch, batch_idx):
+        
+    def step(self, batch):
         x = batch['audio']
-        y = batch['frame']    
+        y_frame = batch['frame']
+        y_onset = batch['onset']
         output = self.model(x)
-        pred = torch.sigmoid(output["prediction"])
+        pred_frame = torch.sigmoid(output["frame"])
+        pred_onset = torch.sigmoid(output["onset"])
         
         # removing extra time step occurs in either label or prediction
-        max_timesteps = min(pred.size(1), y.size(1))
-        y = y[:, :max_timesteps]
-        pred = pred[:, :max_timesteps]
+        max_timesteps = min(pred_frame.size(1), y_frame.size(1))
+        y_frame = y_frame[:, :max_timesteps]
+        y_onset = y_onset[:, :max_timesteps]
+        pred_frame = pred_frame[:, :max_timesteps]
+        pred_onset = pred_onset[:, :max_timesteps]
+
+        # updateing output dictionary
+        output["frame"] = pred_frame
+        output["onset"] = pred_onset
+
+        return output
+
+    def training_step(self, batch, batch_idx):
+        output = self.step(batch)
+        # the frame and onset outputs are after sigmoid
+        # i.e. data range is [0,1]        
         
-        l1_loss = torch.norm(pred, 1, 2).mean()
-        bce_loss = F.binary_cross_entropy(pred, y)
-        loss = bce_loss#+l1_loss
-        self.log("Train/BCE", bce_loss)        
+        bce_loss_frame = F.binary_cross_entropy(output["frame"], batch["frame"])
+        bce_loss_onset = F.binary_cross_entropy(output["onset"], batch["onset"])
+
+        loss = bce_loss_frame + bce_loss_onset
+        self.log("Train/BCE_frame", bce_loss_frame)
+        self.log("Train/BCE_onset", bce_loss_onset)
+        self.log("Train/total_loss", loss) 
         
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x = batch['audio']
-        y = batch['frame']        
+        output = self.step(batch)
 
-        output = self.model(x)
-        pred = torch.sigmoid(output["prediction"])
-        spec = output["spectrogram"]
+        bce_loss_frame = F.binary_cross_entropy(output["frame"], batch["frame"])
+        bce_loss_onset = F.binary_cross_entropy(output["onset"], batch["onset"])
 
-        # removing extra time step occurs in either label or prediction
-        max_timesteps = min(pred.size(1), y.size(1))
-        y = y[:, :max_timesteps]
-        pred = pred[:, :max_timesteps]
+        self.log("Valid/BCE_frame", bce_loss_frame)
+        self.log("Valid/BCE_onset", bce_loss_onset)
 
-        l1_loss = torch.norm(pred, 1, 2).mean()
-        bce_loss = F.binary_cross_entropy(pred, y)
-        self.log("Valid/L1", l1_loss)
-        self.log("Valid/BCE", bce_loss)
-
-        y = y.cpu().detach()
-        pred = pred.cpu().detach()
-        pred_roll = torch.zeros_like(y)
 
         # looping over samples in batch
-        for sample_idx in range(y.size(0)):
-            transcription_metrics = self.evaluator.evaluate(pred[sample_idx], pred[sample_idx], y[sample_idx], y[sample_idx])
-            for key, value in transcription_metrics.items():
-                self.log(f"Valid/{key}", value)
+        for sample_idx in range(batch["frame"].size(0)):
+            transcription_metrics = self.evaluator.evaluate(
+                output["frame"][sample_idx],
+                output["onset"][sample_idx],
+                batch["frame"][sample_idx],
+                batch["onset"][sample_idx])
+            for key_frame, value in transcription_metrics.items():
+                self.log(f"Valid/{key_frame}", value)
 
-        # for idx, (i, j) in enumerate(zip(pred, y)):
-        #     pred_roll[idx] = transcription_accuracy(i, i,
+        # for idx, (i, j) in enumerate(zip(pred, y_frame)):
+        #     pred_roll[idx] = transcription_accuracy_frame(i, i,
         #                                             j, j,
         #                                             metrics, self.hop_length, self.sr, self.min_midi)
 
         if batch_idx==0:
-            self.log_images(pred, f'Valid/posteriorgram')
-            self.log_images(pred_roll, f'Valid/pred_roll')                
+            # plot only two samples
+            samples = 2
+            self.log_images(output["frame"][:samples], f'Valid/frame_pred')
+            self.log_images(output["onset"][:samples], f'Valid/onset_pred')                
             if self.current_epoch==0:
-                self.log_images(spec, f'Valid/spectrogram')                    
-                self.log_images(y, f'Valid/ground_truth_roll')                    
+                self.log_images(output["spec"][:samples], f'Valid/spectrogram')
+                self.log_images(batch["frame"][:samples], f'Valid/frame_gt')
+                self.log_images(batch["onset"][:samples], f'Valid/onset_gt')           
 
 
     def test_step(self, batch, batch_idx):
         x = batch['audio']
-        y = batch['frame']
+        y_frame = batch['frame']
         metrics = {}
 
         pred = self(x)
         max_timesteps = pred.size(1)
-        y = y[:,:max_timesteps]
-        loss = F.binary_cross_entropy(pred, y)
+        y_frame = y_frame[:,:max_timesteps]
+        loss = F.binary_cross_entropy(pred, y_frame)
         metrics["Test/frame"] = loss.item()
 
         pred = pred.cpu().detach()[0]
-        y = y.cpu().detach()[0]
+        y_frame = y_frame.cpu().detach()[0]
 
-        self.transcription_accuracy(pred, y, metrics)
+        self.transcription_accuracy_frame(pred, y_frame, metrics)
         self.log_dict(metrics)            
 
 
-    def log_images(self, tensor, key, num_display=4):
+    def log_images(self, tensor, key_frame, num_display_frame=4):
         for idx, spec in enumerate(tensor.squeeze(1)):
-            if num_display < idx:
+            if num_display_frame < idx:
                 break
             
             fig, ax = plt.subplots(1,1)
             ax.imshow(spec.cpu().detach().t(), aspect='auto', origin='lower')    
-            self.logger.experiment.add_figure(f"{key}/{idx}", fig, global_step=self.current_epoch)
+            self.logger.experiment.add_figure(f"{key_frame}/{idx}", fig, global_step=self.current_epoch)
 
 
 

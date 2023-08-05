@@ -38,7 +38,6 @@ def extract_notes_wo_velocity(frames, onsets):
     pitches = []
     intervals = []
 
-    torch.save(onset_diff, 'onset_diff.pt')
     # find the non-zero indices for onset_diff
     # the non-zero indices are the time (frame) and pitch information
     nonzero_tensor = torch.nonzero(onset_diff, as_tuple=False)
@@ -132,12 +131,12 @@ class Evaluator():
     
         metrics = {}
         
-        pred_frame = (pred_frame > self.frame_threshold).cpu().to(torch.uint8)
-        pred_onset = (pred_onset > self.onset_threshold).cpu().to(torch.uint8)
+        pred_frame = (pred_frame > self.frame_threshold).to(torch.uint8)
+        pred_onset = (pred_onset > self.onset_threshold).to(torch.uint8)
 
 
-        p, r, f, _ = precision_recall_fscore_support(y_frame.flatten(),
-                                                    pred_frame.flatten(),
+        p, r, f, _ = precision_recall_fscore_support(y_frame.flatten().cpu(),
+                                                    pred_frame.flatten().cpu(),
                                                     average='binary')
         metrics['frame/precision'] = p
         metrics['frame/recall'] = r

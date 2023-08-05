@@ -46,8 +46,8 @@ def my_app(cfg):
         cfg.model.args.input_dim = cfg.spec_layer.args.n_mels
     model = AMT(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args),
                 **cfg.pl)
-    checkpoint_callback = ModelCheckpoint(monitor="Train/BCE",
-                                          filename="{epoch:02d}-{Train/BCE:.2f}",
+    checkpoint_callback = ModelCheckpoint(monitor="Train/total_loss",
+                                          filename="{epoch:02d}-{Train/total_loss:.2f}",
                                           save_top_k=3,
                                           mode="min",
                                           auto_insert_metric_name=False)
