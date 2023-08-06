@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from models.utils import Normalization
+from tasks.amt import AMT
 
 
 # from nnAudio.Spectrogram import MelSpectrogram
@@ -95,17 +96,21 @@ class simpleLinear_flatten(nn.Module):
                   "spectrogram": spec}
         return output
 
-class CNN_LSTM(nn.Module):
+class CNN_LSTM(AMT):
     def __init__(self,
                  spec_layer,
                  norm_mode,
                  input_dim,
+                 onset=False,
                  hidden_dim=768,
-                 output_dim=88):
-        super().__init__()
+                 output_dim=88,
+                 task_kargs=None):
+        super().__init__(**task_kargs)
+        self.save_hyperparameters(ignore=['spec_layer', 'task_kargs'])
         
         self.spec_layer = spec_layer
         self.norm_layer = Normalization(mode=norm_mode)
+        self.onset = onset
         
         self.cnn = nn.Sequential(
             # layer 0
@@ -134,7 +139,8 @@ class CNN_LSTM(nn.Module):
         self.bilstm = nn.LSTM(hidden_dim, hidden_dim//2, batch_first=True, num_layers=1, bidirectional=True)
         
         self.frame_classifier = nn.Linear(hidden_dim, output_dim)
-        self.onset_classifier = nn.Linear(hidden_dim, output_dim)
+        if self.onset:
+            self.onset_classifier = nn.Linear(hidden_dim, output_dim)
         
     def forward(self, x):
         spec = self.spec_layer(x) # (B, F, T)
@@ -149,11 +155,16 @@ class CNN_LSTM(nn.Module):
         x, _ = self.bilstm(x)
         
         pred_frame = self.frame_classifier(x)
-        pred_onset = self.onset_classifier(x)
-        
-        output = {"frame": pred_frame,
-                  "onset": pred_onset,
-                  "spec": spec}
+        if self.onset:
+            pred_onset = self.onset_classifier(x)
+
+            output = {"frame": pred_frame,
+                      "onset": pred_onset,
+                      "spec": spec}
+        else:
+            output = {"frame": pred_frame,
+                      "spec": spec}
+            
         return output        
         
         

@@ -14,20 +14,13 @@ import pandas as pd
 
 class AMT(pl.LightningModule):
     def __init__(self,
-                 model,
                  lr,
                  sr,
                  hop_length,
                  min_midi
                 ):
         super().__init__()
-
-        self.model = model
-        self.lr = lr
-        self.sr = sr
-        self.hop_length = hop_length
-        self.min_midi = min_midi
-
+        self.save_hyperparameters()
         self.evaluator = Evaluator(
             hop_length,
             sr,
@@ -37,37 +30,66 @@ class AMT(pl.LightningModule):
             )
         
     def step(self, batch):
+        # when self.hparams.onset==False
+        # output["onset"] is the same as output["frame"]
+
         x = batch['audio']
         y_frame = batch['frame']
         y_onset = batch['onset']
-        output = self.model(x)
+        output = self(x)
         pred_frame = torch.sigmoid(output["frame"])
-        pred_onset = torch.sigmoid(output["onset"])
+
         
         # removing extra time step occurs in either label or prediction
         max_timesteps = min(pred_frame.size(1), y_frame.size(1))
         y_frame = y_frame[:, :max_timesteps]
-        y_onset = y_onset[:, :max_timesteps]
         pred_frame = pred_frame[:, :max_timesteps]
-        pred_onset = pred_onset[:, :max_timesteps]
+
 
         # updateing output dictionary
         output["frame"] = pred_frame
-        output["onset"] = pred_onset
+
+        # if onset is used, do the same for onset
+        if self.hparams.onset:
+            pred_onset = torch.sigmoid(output["onset"])
+            pred_onset = pred_onset[:, :max_timesteps]
+            y_onset = y_onset[:, :max_timesteps]
+            output["onset"] = pred_onset
+        else:
+            output["onset"] = pred_frame
 
         return output
+    
+    def compute_loss(self, output, batch):
+        if self.hparams.onset:
+            bce_loss_onset = F.binary_cross_entropy(output["onset"], batch['onset'])
+        else: 
+            bce_loss_onset = 0
+
+        bce_loss_frame = F.binary_cross_entropy(output["frame"], batch['frame'])   
+
+        losses = {
+            "bce_loss_frame": bce_loss_frame,
+            "bce_loss_onset": bce_loss_onset
+        }
+
+        return losses
+
 
     def training_step(self, batch, batch_idx):
         output = self.step(batch)
         # the frame and onset outputs are after sigmoid
-        # i.e. data range is [0,1]        
-        
-        bce_loss_frame = F.binary_cross_entropy(output["frame"], batch["frame"])
-        bce_loss_onset = F.binary_cross_entropy(output["onset"], batch["onset"])
+        # i.e. data range is [0,1]      
+        # when self.hparams.onset==False
+        # output["onset"] is the same as output["frame"]   
 
-        loss = bce_loss_frame + bce_loss_onset
-        self.log("Train/BCE_frame", bce_loss_frame)
-        self.log("Train/BCE_onset", bce_loss_onset)
+        losses = self.compute_loss(output, batch)
+        
+
+        loss = losses['bce_loss_frame'] + losses['bce_loss_onset']
+
+        self.log("Train/BCE_frame", losses['bce_loss_frame'])
+        self.log("Train/BCE_onset", losses['bce_loss_onset'])
         self.log("Train/total_loss", loss) 
         
         return loss
@@ -75,11 +97,10 @@ class AMT(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         output = self.step(batch)
 
-        bce_loss_frame = F.binary_cross_entropy(output["frame"], batch["frame"])
-        bce_loss_onset = F.binary_cross_entropy(output["onset"], batch["onset"])
+        losses = self.compute_loss(output, batch)
 
-        self.log("Valid/BCE_frame", bce_loss_frame)
-        self.log("Valid/BCE_onset", bce_loss_onset)
+        self.log("Valid/BCE_frame", losses['bce_loss_frame'])
+        self.log("Valid/BCE_onset", losses['bce_loss_onset'])
 
 
         # looping over samples in batch
@@ -139,7 +160,7 @@ class AMT(pl.LightningModule):
 
     def configure_optimizers(self):
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
 #         scheduler = TriStageLRSchedule(optimizer,
 #                                        [1e-8, self.lr, 1e-8],
 #                                        [0.2,0.6,0.2],

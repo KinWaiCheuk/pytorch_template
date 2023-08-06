@@ -8,7 +8,7 @@ min_midi: 21
 max_midi: 108
 learning_rate: 1e-5
 epochs: 1000
-download: True
+download: False
 data_root: '/data2/kinwai'
 
 dataset:
@@ -30,7 +30,7 @@ dataset:
         root: ${data_root} 
         groups: 'test'
         data_type: 'MUS'
-        download: ${download}
+        download: False
         preload: False
         sequence_length: ${sequence_length}
         seed: 42
