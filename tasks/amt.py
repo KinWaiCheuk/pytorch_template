@@ -36,7 +36,11 @@ class AMT(pl.LightningModule):
         x = batch['audio']
         y_frame = batch['frame']
         y_onset = batch['onset']
-        output = self(x)
+        if self.mfm:
+            mfm_tokens = batch['tokens']
+        else:
+            mfm_tokens = None
+        output = self(x, mfm_tokens)
         pred_frame = torch.sigmoid(output["frame"])
 
         

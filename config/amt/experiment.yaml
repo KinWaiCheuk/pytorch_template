@@ -1,7 +1,8 @@
 user_config: # path to config file to update
 
-gpus: 1
-hop_length: 512
+gpus: 0
+hop_length: 1024
+n_fft: 4096
 sequence_length: 327680
 sampling_rate: 44100
 min_midi: 21
@@ -26,6 +27,7 @@ dataset:
         ext_audio: '.wav'
         sampling_rate: ${sampling_rate}
         overlap: False
+        mfm_path: '/data2/kinwai/mfm_features_top_koyama/'
     test:
         root: ${data_root} 
         groups: 'test'
@@ -39,6 +41,7 @@ dataset:
         min_midi: 21
         ext_audio: '.wav'
         sampling_rate: ${sampling_rate}
+        mfm_path: '/data2/kinwai/mfm_features_top_koyama/'        
         overlap: True
         
 dataloader:

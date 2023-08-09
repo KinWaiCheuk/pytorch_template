@@ -176,17 +176,24 @@ class Attention_CNN(AMT):
                  onset=False,
                  hidden_dim=768,
                  output_dim=88,
+                 mfm=False,
                  task_kargs=None):
         super().__init__(**task_kargs)
         self.save_hyperparameters(ignore=['spec_layer', 'task_kargs'])
         
         self.spec_layer = spec_layer
+        self.mfm = mfm
 
         attn_embed_dim = 256
         attn_num_heads = 8
 
         self.spec_proj = nn.Linear(input_dim, attn_embed_dim)
         self.pos_encoder = PositionalEncoder(attn_embed_dim)
+
+        if self.mfm:
+            # the mfm tokens (top layer prior) have 3600 feature dimension
+            self.mfm_proj = nn.Linear(3600, attn_embed_dim)
+
         self.multihead_attn = nn.MultiheadAttention(
             embed_dim=attn_embed_dim,
             num_heads=attn_num_heads,
@@ -223,7 +230,8 @@ class Attention_CNN(AMT):
         if self.onset:
             self.onset_classifier = nn.Linear(hidden_dim, output_dim)
         
-    def forward(self, x):
+    def forward(self, x, mfm_tokens=None):
+        # if x2 is given, do cross attention
         spec = self.spec_layer(x) # (B, F, T)
         spec = torch.log(spec+1e-8)
         spec = spec.transpose(1,2) # (B, T, F)
@@ -231,9 +239,26 @@ class Attention_CNN(AMT):
         spec = self.norm_layer(spec)
 
         # self-attention
-        spec = self.spec_proj(spec) # project spec into attn_embed_dim
-        spec = self.pos_encoder(spec) # add positional encoding
-        attn_output, attn_output_weights = self.multihead_attn(spec, spec, spec)
+        spec_proj = self.spec_proj(spec) # project spec into attn_embed_dim
+        spec_proj = self.pos_encoder(spec_proj) # add positional encoding
+
+        if mfm_tokens != None:
+            # sanity check to avoid bugs
+            assert self.mfm, "mfm_tokens is given but mfm is not set to True"
+
+            mfm_tokens_proj = self.mfm_proj(mfm_tokens)
+            #(B, T, F)
+
+            attn_k = mfm_tokens_proj
+            attn_v = mfm_tokens_proj
+        else:
+            attn_k = spec_proj
+            attn_v = spec_proj
+        attn_output, attn_output_weights = self.multihead_attn(
+            spec_proj,
+            attn_k,
+            attn_v
+            )
 
         attn_output = attn_output.unsqueeze(1) # (B, 1, T, F)???
 
