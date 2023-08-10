@@ -51,7 +51,13 @@ def my_app(cfg):
                                           mode="min",
                                           auto_insert_metric_name=False)
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    logger = TensorBoardLogger(save_dir=".", version=1, name=f'AMT-{cfg.spec_layer.type}-{cfg.model.type}')
+
+    if cfg.mfm_path:
+        assert cfg.model.args.mfm != False, "mfm_path is provided but mfm is not used"
+        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}-mfm"
+    else:
+        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}"
+    logger = TensorBoardLogger(save_dir=".", version=1, name=exp_name)
     trainer = pl.Trainer(gpus=cfg.gpus,
                          max_epochs=cfg.epochs,
                          callbacks=[checkpoint_callback, lr_monitor],

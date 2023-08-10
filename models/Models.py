@@ -192,11 +192,20 @@ class Attention_CNN(AMT):
 
         if self.mfm:
             # the mfm tokens (top layer prior) have 3600 feature dimension
-            self.mfm_proj = nn.Linear(3600, attn_embed_dim)
+            # self.mfm_proj = nn.Linear(3600, attn_embed_dim)
+            mfm_dim = 3600
+            self.mfm_pos_encoder = PositionalEncoder(mfm_dim)            
+            kdim = mfm_dim
+            vdim = mfm_dim
+        else:
+            kdim = None
+            vdim = None
 
         self.multihead_attn = nn.MultiheadAttention(
             embed_dim=attn_embed_dim,
             num_heads=attn_num_heads,
+            kdim=kdim,
+            vdim=vdim,
             batch_first=True
             )        
         self.norm_layer = Normalization(mode=norm_mode)
@@ -246,11 +255,11 @@ class Attention_CNN(AMT):
             # sanity check to avoid bugs
             assert self.mfm, "mfm_tokens is given but mfm is not set to True"
 
-            mfm_tokens_proj = self.mfm_proj(mfm_tokens)
+            # mfm_tokens_proj = self.mfm_proj(mfm_tokens)
             #(B, T, F)
 
-            attn_k = mfm_tokens_proj
-            attn_v = mfm_tokens_proj
+            attn_k = mfm_tokens
+            attn_v = mfm_tokens
         else:
             attn_k = spec_proj
             attn_v = spec_proj
