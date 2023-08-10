@@ -190,6 +190,7 @@ class Attention_CNN(AMT):
         self.spec_proj = nn.Linear(input_dim, attn_embed_dim)
         self.pos_encoder = PositionalEncoder(attn_embed_dim)
 
+
         if self.mfm:
             # the mfm tokens (top layer prior) have 3600 feature dimension
             # self.mfm_proj = nn.Linear(3600, attn_embed_dim)
@@ -272,6 +273,206 @@ class Attention_CNN(AMT):
         attn_output = attn_output.unsqueeze(1) # (B, 1, T, F)???
 
         x = self.cnn(attn_output) # (B, hidden_dim//8, T, F//4)
+        x = x.transpose(1,2).flatten(2)
+        x = self.fc(x) # (B, T, hidden_dim//8*F//4)
+        
+        pred_frame = self.frame_classifier(x)
+        if self.onset:
+            pred_onset = self.onset_classifier(x)
+
+            output = {"frame": pred_frame,
+                      "onset": pred_onset,
+                      "spec": spec}
+        else:
+            output = {"frame": pred_frame,
+                      "spec": spec}
+            
+        return output
+    
+
+class AvgPool_CNN_Early(AMT):
+    def __init__(self,
+                 spec_layer,
+                 norm_mode,
+                 input_dim,
+                 onset=False,
+                 hidden_dim=768,
+                 output_dim=88,
+                 mfm=False,
+                 task_kargs=None):
+        super().__init__(**task_kargs)
+        self.save_hyperparameters(ignore=['spec_layer', 'task_kargs'])
+        
+        # input_dim = 229
+        # which is the spectrogram bins
+        self.input_dim = input_dim
+        self.spec_layer = spec_layer
+        self.mfm = mfm
+
+        if self.mfm:
+            # 1frame = 8 token
+            self.mfm_proj = nn.Linear(3600, input_dim)
+            self.avg_pool = torch.nn.AvgPool1d(8)            
+
+        self.norm_layer = Normalization(mode=norm_mode)
+        self.onset = onset
+
+        self.feat_selector = nn.Linear(input_dim*2, input_dim)
+        
+        self.cnn = nn.Sequential(
+            # layer 0
+            nn.Conv2d(1, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 1
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 2
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 8, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 8),
+            nn.ReLU(),
+            # layer 3
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+        )
+        self.fc = nn.Sequential(
+            nn.Linear((hidden_dim // 8) * (input_dim // 4), hidden_dim),
+            nn.Dropout(0.5)
+        )
+        
+        self.frame_classifier = nn.Linear(hidden_dim, output_dim)
+        if self.onset:
+            self.onset_classifier = nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, x, mfm_tokens=None):
+        # if x2 is given, do cross attention
+        spec = self.spec_layer(x) # (B, F, T)
+        spec = torch.log(spec+1e-8)
+        spec = spec.transpose(1,2) # (B, T, F)
+
+        spec = self.norm_layer(spec)
+
+
+        if mfm_tokens != None:
+            # sanity check to avoid bugs
+            assert self.mfm, "mfm_tokens is given but mfm is not set to True"
+            mfm_tokens = self.mfm_proj(mfm_tokens)
+            # downsample mfm_tokens to be the same size as spec
+            mfm_tokens = self.avg_pool(mfm_tokens.transpose(-1,-2)).transpose(-1,-2)
+            #(B, T, F)
+
+            # discard the last frame of spec
+            # because we don't have enough mfm_tokens for the last frame
+        else:
+            mfm_tokens = torch.zeros_like(spec[:,:-1])
+        x = torch.cat([spec[:,:-1], mfm_tokens], dim=-1)            
+        # combine spec and mfm_tokens
+        
+        x = self.feat_selector(x)
+        x = self.cnn(x.unsqueeze(1)) # (B, hidden_dim//8, T, F//4)
+        x = x.transpose(1,2).flatten(2)
+        x = self.fc(x) # (B, T, hidden_dim//8*F//4)
+        
+        pred_frame = self.frame_classifier(x)
+        if self.onset:
+            pred_onset = self.onset_classifier(x)
+
+            output = {"frame": pred_frame,
+                      "onset": pred_onset,
+                      "spec": spec}
+        else:
+            output = {"frame": pred_frame,
+                      "spec": spec}
+            
+        return output
+    
+
+class AvgPool_CNN_Late(AMT):
+    def __init__(self,
+                 spec_layer,
+                 norm_mode,
+                 input_dim,
+                 onset=False,
+                 hidden_dim=768,
+                 output_dim=88,
+                 mfm=False,
+                 task_kargs=None):
+        super().__init__(**task_kargs)
+        self.save_hyperparameters(ignore=['spec_layer', 'task_kargs'])
+        
+        # input_dim = 229
+        # which is the spectrogram bins
+        self.input_dim = input_dim
+        self.spec_layer = spec_layer
+        self.mfm = mfm
+
+        if self.mfm:
+            # 1frame = 8 token
+            self.mfm_proj = nn.Linear(3600, input_dim)
+            self.avg_pool = torch.nn.AvgPool1d(8)            
+
+        self.norm_layer = Normalization(mode=norm_mode)
+        self.onset = onset
+
+        self.feat_selector = nn.Linear(input_dim*2, input_dim)
+        
+        self.cnn = nn.Sequential(
+            # layer 0
+            nn.Conv2d(1, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 1
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 2
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 8, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 8),
+            nn.ReLU(),
+            # layer 3
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+        )
+        self.fc = nn.Sequential(
+            nn.Linear((hidden_dim // 8) * (input_dim // 4), hidden_dim),
+            nn.Dropout(0.5)
+        )
+        
+        self.frame_classifier = nn.Linear(hidden_dim, output_dim)
+        if self.onset:
+            self.onset_classifier = nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, x, mfm_tokens=None):
+        # if x2 is given, do cross attention
+        spec = self.spec_layer(x) # (B, F, T)
+        spec = torch.log(spec+1e-8)
+        spec = spec.transpose(1,2) # (B, T, F)
+
+        spec = self.norm_layer(spec)
+
+
+        if mfm_tokens != None:
+            # sanity check to avoid bugs
+            assert self.mfm, "mfm_tokens is given but mfm is not set to True"
+            mfm_tokens = self.mfm_proj(mfm_tokens)
+            # downsample mfm_tokens to be the same size as spec
+            mfm_tokens = self.avg_pool(mfm_tokens.transpose(-1,-2)).transpose(-1,-2)
+            #(B, T, F)
+
+            # discard the last frame of spec
+            # because we don't have enough mfm_tokens for the last frame
+        else:
+            mfm_tokens = torch.zeros_like(spec[:,:-1])
+        x = torch.cat([spec[:,:-1], mfm_tokens], dim=-1)            
+        # combine spec and mfm_tokens
+        
+        x = self.feat_selector(x)
+        x = self.cnn(x.unsqueeze(1)) # (B, hidden_dim//8, T, F//4)
         x = x.transpose(1,2).flatten(2)
         x = self.fc(x) # (B, T, hidden_dim//8*F//4)
         

@@ -1,0 +1,8 @@
+type: 'AvgPool_CNN_Early'
+args:
+    norm_mode: 'imagewise'
+    hidden_dim: 768
+    output_dim: 88 # piano has 88 notes
+    onset: False
+    input_dim: ${spec_layer.args.n_mels} # it is the number of mel bins/spec bands
+    mfm: False
