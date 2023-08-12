@@ -53,6 +53,9 @@ class AMT(pl.LightningModule):
         max_timesteps = min(pred_frame.size(1), y_frame.size(1))
         y_frame = y_frame[:, :max_timesteps]
         pred_frame = pred_frame[:, :max_timesteps]
+        # save the updated y_frame back to batch
+        batch['frame'] = y_frame
+        batch['onset'] = batch['onset'][:, :max_timesteps]
 
 
         # updateing output dictionary
