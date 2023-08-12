@@ -1,6 +1,6 @@
 user_config: # path to config file to update
 
-gpus: 0
+gpus: [2]
 hop_length: 1024
 n_fft: 4096
 sequence_length: 327680
@@ -11,7 +11,7 @@ learning_rate: 1e-5
 epochs: 1000
 download: False
 data_root: '/data2/kinwai'
-mfm_path: null #'/data2/kinwai/mfm_features_top_koyama/' 
+mfm_path: '/data2/kinwai/mfm_features_top_koyama/' 
 
 dataset:
     train:
@@ -35,7 +35,7 @@ dataset:
         data_type: 'MUS'
         download: False
         preload: False
-        sequence_length: ${sequence_length}
+        sequence_length: null
         seed: 42
         hop_length: ${hop_length}
         max_midi: 108
@@ -57,7 +57,7 @@ dataloader:
         shuffle: False
         pin_memory: True
     test:
-        batch_size: 4
+        batch_size: 1
         num_workers: 8
         shuffle: False
         pin_memory: True
@@ -70,8 +70,7 @@ pl:
 
 defaults:    
     - spec_layer: Mel
-    - model: AvgPool_CNN
-        
+    - model: AvgPool_CNN_Late
         
         
         

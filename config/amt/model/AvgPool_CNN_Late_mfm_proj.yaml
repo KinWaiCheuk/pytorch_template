@@ -1,4 +1,4 @@
-type: 'AvgPool_CNN_Late'
+type: 'AvgPool_CNN_Late_mfm_proj'
 args:
     norm_mode: 'imagewise'
     hidden_dim: 768
