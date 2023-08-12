@@ -1,0 +1,51 @@
+user_config: # path to config file to update
+
+gpus: [3]
+hop_length: 1024
+sequence_length: 327680
+sampling_rate: 44100
+min_midi: 21
+max_midi: 108
+download: False
+data_root: '/data2/kinwai'
+mfm_path: '/data2/kinwai/mfm_features_top_koyama/' 
+checkpoint_path: '/home/kinwai/pytorch_template/outputs/2023-08-10/20-01-58/AMT-token_offset-MelSpectrogram-AvgPool_CNN/version_1/checkpoints/964-0.05.ckpt'
+
+dataset:
+    test:
+        root: ${data_root} 
+        groups: 'test'
+        data_type: 'MUS'
+        download: ${download}
+        preload: False
+        sequence_length: ${sequence_length}
+        seed: 42
+        hop_length: ${hop_length}
+        max_midi: 108
+        min_midi: 21
+        ext_audio: '.wav'
+        sampling_rate: ${sampling_rate}
+        mfm_path: ${mfm_path}
+        overlap: True
+        
+dataloader:
+    test:
+        batch_size: 4
+        num_workers: 0
+        shuffle: False
+        pin_memory: True
+
+pl:
+    lr: ${learning_rate}
+    sr: ${sampling_rate}
+    hop_length: ${hop_length}
+    min_midi: ${min_midi}
+
+defaults:    
+    - spec_layer: Mel
+    - model: AvgPool_CNN_Early_mfm_proj
+        
+        
+        
+        
+        

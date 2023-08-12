@@ -25,18 +25,14 @@ from omegaconf import OmegaConf
 import pickle
 
 
-@hydra.main(config_path="config/amt", config_name="experiment")
+@hydra.main(config_path="config/amt", config_name="test")
 def my_app(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
     # Loading dataset
-    train_dataset = MAPS(**cfg.dataset.train)
     test_dataset = MAPS(**cfg.dataset.test)
-    train_dataset, valid_dataset = random_split(train_dataset, [110, 29], generator=torch.Generator().manual_seed(0))
 
     # Create dataloaders
-    train_loader = DataLoader(train_dataset, **cfg.dataloader.train)
-    valid_loader = DataLoader(valid_dataset, **cfg.dataloader.valid)
-    test_dataset = DataLoader(test_dataset, **cfg.dataloader.test)    
+    test_loader = DataLoader(test_dataset, **cfg.dataloader.test)    
     SpecLayer = getattr(Spectrogram, cfg.spec_layer.type)
     spec_layer = SpecLayer(**cfg.spec_layer.args)
     # Auto inferring input dimension 
@@ -44,27 +40,24 @@ def my_app(cfg):
         cfg.model.args.input_dim = cfg.spec_layer.args.n_fft//2+1
     elif cfg.spec_layer.type=='MelSpectrogram':
         cfg.model.args.input_dim = cfg.spec_layer.args.n_mels
-    model = getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args, task_kargs=cfg.pl)
-    checkpoint_callback = ModelCheckpoint(monitor="Train/total_loss",
-                                          filename="{epoch:02d}-{Train/total_loss:.2f}",
-                                          save_top_k=3,
-                                          mode="min",
-                                          auto_insert_metric_name=False)
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    model = getattr(
+        Model, 
+        cfg.model.type
+        ).load_from_checkpoint(
+            checkpoint_path=cfg.checkpoint_path, 
+            spec_layer=spec_layer, 
+            task_kargs=cfg.pl
+            )
 
     if cfg.mfm_path:
         assert cfg.model.args.mfm != False, "mfm_path is provided but mfm is not used"
-        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}-mfm"
+        exp_name = f"Test_AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}-mfm"
     else:
-        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}"
+        exp_name = f"Test_AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}"
     logger = TensorBoardLogger(save_dir=".", version=1, name=exp_name)
     trainer = pl.Trainer(gpus=cfg.gpus,
-                         max_epochs=cfg.epochs,
-                         callbacks=[checkpoint_callback, lr_monitor],
-                         logger=logger,
-                         check_val_every_n_epoch=20)
-    trainer.fit(model, train_loader, valid_loader)
-    trainer.test(model, train_loader, valid_loader)
+                         logger=logger)
+    trainer.test(model, test_loader)
     
 if __name__ == "__main__":
     my_app()    
