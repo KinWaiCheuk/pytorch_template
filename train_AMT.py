@@ -64,7 +64,7 @@ def my_app(cfg):
                          logger=logger,
                          check_val_every_n_epoch=20)
     trainer.fit(model, train_loader, valid_loader)
-    trainer.test(model, train_loader, valid_loader)
+    trainer.test(model, test_dataset)
     
 if __name__ == "__main__":
     my_app()    
