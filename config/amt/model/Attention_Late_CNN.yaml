@@ -1,8 +1,8 @@
-type: 'AvgPool_CNN_Late_mfm_proj'
+type: 'Attention_Late_CNN'
 args:
     norm_mode: 'imagewise'
     hidden_dim: 768
     output_dim: 88 # piano has 88 notes
     onset: False
     input_dim: ${spec_layer.args.n_mels} # it is the number of mel bins/spec bands
-    mfm: # no need to provide anything, it will be overwritten in the main script
+    mfm: # auto-fill in the main script 

@@ -44,6 +44,14 @@ def my_app(cfg):
         cfg.model.args.input_dim = cfg.spec_layer.args.n_fft//2+1
     elif cfg.spec_layer.type=='MelSpectrogram':
         cfg.model.args.input_dim = cfg.spec_layer.args.n_mels
+
+    if cfg.mfm_path:
+        cfg.model.args.mfm = True
+        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}-mfm"
+    else:
+        cfg.model.args.mfm = False
+        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}"
+
     model = getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args, task_kargs=cfg.pl)
     checkpoint_callback = ModelCheckpoint(monitor="Train/total_loss",
                                           filename="{epoch:02d}-{Train/total_loss:.2f}",
@@ -52,11 +60,6 @@ def my_app(cfg):
                                           auto_insert_metric_name=False)
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
-    if cfg.mfm_path:
-        cfg.model.args.mfm = True
-        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}-mfm"
-    else:
-        exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}"
     logger = TensorBoardLogger(save_dir=".", version=1, name=exp_name)
     trainer = pl.Trainer(gpus=cfg.gpus,
                          max_epochs=cfg.epochs,

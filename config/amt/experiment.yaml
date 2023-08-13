@@ -70,7 +70,7 @@ pl:
 
 defaults:    
     - spec_layer: Mel
-    - model: AvgPool_CNN_Late
+    - model: Attention_Late_CNN
         
         
         

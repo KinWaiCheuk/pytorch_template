@@ -169,7 +169,7 @@ class CNN_LSTM(AMT):
             
         return output
         
-class Attention_CNN(AMT):
+class Attention_Early_CNN(AMT):
     def __init__(self,
                  spec_layer,
                  norm_mode,
@@ -196,7 +196,7 @@ class Attention_CNN(AMT):
             # the mfm tokens (top layer prior) have 3600 feature dimension
             # self.mfm_proj = nn.Linear(3600, attn_embed_dim)
             mfm_dim = 3600
-            self.mfm_pos_encoder = PositionalEncoder(mfm_dim)            
+            self.mfm_pos_encoder = PositionalEncoder(mfm_dim, max_seq_len=8192)            
             kdim = mfm_dim
             vdim = mfm_dim
         else:
@@ -251,15 +251,14 @@ class Attention_CNN(AMT):
 
         # self-attention
         spec_proj = self.spec_proj(spec) # project spec into attn_embed_dim
-        spec_proj = self.pos_encoder(spec_proj) # add positional encoding
+        spec_pos = self.pos_encoder(spec_proj) # add positional encoding
 
         if mfm_tokens != None:
             # sanity check to avoid bugs
             assert self.mfm, "mfm_tokens is given but mfm is not set to True"
-
+            mfm_tokens = self.mfm_pos_encoder(mfm_tokens)
             # mfm_tokens_proj = self.mfm_proj(mfm_tokens)
             #(B, T, F)
-
             attn_k = mfm_tokens
             attn_v = mfm_tokens
         else:
@@ -289,6 +288,130 @@ class Attention_CNN(AMT):
                       "spec": spec}
             
         return output
+
+
+class Attention_Late_CNN(AMT):
+    def __init__(self,
+                 spec_layer,
+                 norm_mode,
+                 input_dim,
+                 onset=False,
+                 hidden_dim=768,
+                 output_dim=88,
+                 mfm=False,
+                 task_kargs=None):
+        super().__init__(**task_kargs)
+        self.save_hyperparameters(ignore=['spec_layer', 'task_kargs'])
+        
+        self.spec_layer = spec_layer
+        self.mfm = mfm
+
+        attn_embed_dim = 256
+        attn_num_heads = 8
+
+        self.pos_encoder = PositionalEncoder(attn_embed_dim)
+
+
+        if self.mfm:
+            # the mfm tokens (top layer prior) have 3600 feature dimension
+            # self.mfm_proj = nn.Linear(3600, attn_embed_dim)
+            mfm_dim = 3600
+            self.mfm_pos_encoder = PositionalEncoder(mfm_dim, max_seq_len=8192)            
+            kdim = mfm_dim
+            vdim = mfm_dim
+        else:
+            kdim = None
+            vdim = None
+
+        self.multihead_attn = nn.MultiheadAttention(
+            embed_dim=attn_embed_dim,
+            num_heads=attn_num_heads,
+            kdim=kdim,
+            vdim=vdim,
+            batch_first=True
+            )        
+        self.norm_layer = Normalization(mode=norm_mode)
+        self.onset = onset
+        
+        self.cnn = nn.Sequential(
+            # layer 0
+            nn.Conv2d(1, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 1
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 2
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 8, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 8),
+            nn.ReLU(),
+            # layer 3
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+        )
+
+        self.x_proj = nn.Linear((hidden_dim // 8) * (input_dim // 4), attn_embed_dim)
+
+        self.fc = nn.Sequential(
+            nn.Linear(attn_embed_dim, hidden_dim),
+            nn.Dropout(0.5)
+        )
+        
+        self.frame_classifier = nn.Linear(hidden_dim, output_dim)
+        if self.onset:
+            self.onset_classifier = nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, x, mfm_tokens=None):
+        # if x2 is given, do cross attention
+        spec = self.spec_layer(x) # (B, F, T)
+        spec = torch.log(spec+1e-8)
+        spec = spec.transpose(1,2) # (B, T, F)
+
+        spec = self.norm_layer(spec)
+
+        # self-attention
+        if mfm_tokens != None:
+            # sanity check to avoid bugs
+            assert self.mfm, "mfm_tokens is given but mfm is not set to True"
+            mfm_tokens = self.mfm_pos_encoder(mfm_tokens)
+            # mfm_tokens_proj = self.mfm_proj(mfm_tokens)
+            #(B, T, F)
+
+            attn_k = mfm_tokens
+            attn_v = mfm_tokens
+
+
+        x = self.cnn(spec.unsqueeze(1)) # (B, hidden_dim//8, T, F//4)
+        x = x.transpose(1,2).flatten(2)
+
+        x = self.x_proj(x)
+        x = self.pos_encoder(x)
+        attn_output, attn_output_weights = self.multihead_attn(
+            x,
+            attn_k,
+            attn_v
+            )   
+
+        attn_output = attn_output.unsqueeze(1) # (B, 1, T, F)???                 
+
+        x = self.fc(x) # (B, T, hidden_dim//8*F//4)
+        
+        pred_frame = self.frame_classifier(x)
+        if self.onset:
+            pred_onset = self.onset_classifier(x)
+
+            output = {"frame": pred_frame,
+                      "onset": pred_onset,
+                      "spec": spec}
+        else:
+            output = {"frame": pred_frame,
+                      "spec": spec}
+            
+        return output
+    
     
 
 class AvgPool_CNN_Early(AMT):
@@ -391,7 +514,7 @@ class AvgPool_CNN_Early(AMT):
         return output
     
 
-class AvgPool_CNN_Early_mfm_proj(AMT):
+class AvgPool_CNN_Early_proj(AMT):
     def __init__(self,
                  spec_layer,
                  norm_mode,
