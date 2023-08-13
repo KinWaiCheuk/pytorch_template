@@ -13,7 +13,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
 from tasks.amt import AMT
-import models.Models as Model
+import models.amt_models as Model
 from utils.text_processing import TextTransform, data_processing
 
 # Libraries related to hydra
