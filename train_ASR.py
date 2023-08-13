@@ -13,7 +13,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
 from tasks.asr import ASR
-import models.Models as Model
+import models.asr_models as Model
 from utils.text_processing import TextTransform, data_processing
 
 # Libraries related to hydra
@@ -65,7 +65,7 @@ def main(cfg):
     
 
 
-    text_transform = TextTransform(output_dict, cfg.output_mode) # for text to int conversion layer
+    text_transform = TextTransform(output_dict, cfg.output_mode) # text to int conversion
 
     train_loader = DataLoader(train_dataset,
                               **cfg.dataloader.train,
@@ -83,9 +83,11 @@ def main(cfg):
                                                                   text_transform,
                                                                   **cfg.data_processing))      
 
-    model = ASR(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args),
-                text_transform,
-                **cfg.pl)
+    model = getattr(Model, cfg.model.type)(spec_layer, 
+                                           **cfg.model.args, 
+                                           text_transform = text_transform, 
+                                           lr=cfg.pl.lr
+                                           )    
     checkpoint_callback = ModelCheckpoint(**cfg.model_checkpoint)
     lr_monitor = LearningRateMonitor(logging_interval='step')
     logger = TensorBoardLogger(save_dir=".", version=1, name=f'ASR-{cfg.spec_layer.type}-{cfg.model.type}')

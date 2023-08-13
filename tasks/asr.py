@@ -9,17 +9,15 @@ import pandas as pd
 
 class ASR(pl.LightningModule):
     def __init__(self,
-                 model,
                  text_transform,
                  lr):
         super().__init__()
         self.text_transform = text_transform        
         self.lr = lr
-        self.model = model
 
     def training_step(self, batch, batch_idx):
         x = batch['waveforms']
-        output = self.model(x)
+        output = self(x)
         pred = output["prediction"]
         pred = torch.log_softmax(pred, -1) # CTC loss requires log_softmax
         loss = F.ctc_loss(pred.transpose(0, 1),
@@ -32,7 +30,7 @@ class ASR(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x = batch['waveforms']
         with torch.no_grad():
-            output = self.model(x)
+            output = self(x)
             pred = output["prediction"]
             pred = torch.log_softmax(pred, -1) # CTC loss requires log_softmax            
             spec = output["spectrogram"]
@@ -60,7 +58,7 @@ class ASR(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         x = batch['waveforms']
         with torch.no_grad():
-            output = self.model(x)
+            output = self(x)
             pred = output["prediction"]
             pred = torch.log_softmax(pred, -1) # CTC loss requires log_softmax
             spec = output["spectrogram"]
