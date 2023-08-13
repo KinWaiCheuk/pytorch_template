@@ -1,0 +1,44 @@
+gpus: 1
+hop_length: 160
+sampling_rate: 16000
+learning_rate: 1e-5
+epochs: 400
+output_mode: 'ph'
+download: False
+val_frequency: 1
+data_root: './SpeechDataset'
+num_workers: 4
+checkpoint_path: 'outputs/2023-08-13/17-53-53/ASR-MelSpectrogram-simpleLSTM/version_1/checkpoints/last.ckpt'
+
+dataset:      
+    test:
+        root: ${data_root}
+        split: 'test'
+        download: False
+        
+dataloader:
+    test:
+        batch_size: 1
+        num_workers: 0
+        pin_memory: True
+        
+data_processing:
+    input_key: 'waveform'
+    label_key: 0 # will be overwritten inside the code
+    downsample_factor: ${hop_length}
+    
+trainer:
+    gpus: ${gpus}
+    accelerator: 'ddp'
+    sync_batchnorm: True
+    replace_sampler_ddp: False
+    profiler: 'simple'
+    check_val_every_n_epoch: ${val_frequency}
+    num_sanity_val_steps: 2
+
+pl: 
+    lr: ${learning_rate}  
+    
+defaults:    
+    - spec_layer: Mel
+    - model: simpleLSTM
