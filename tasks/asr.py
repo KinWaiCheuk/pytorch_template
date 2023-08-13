@@ -1,15 +1,9 @@
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 import torch.nn.functional as F
-import torch.nn as nn
 import matplotlib.pyplot as plt
-from utils import TriStageLRSchedule
-from utils import extract_notes_wo_velocity, transcription_accuracy
 from utils.text_processing import GreedyDecoder
 import fastwer
-import contextlib
 import pandas as pd
 
 
