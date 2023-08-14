@@ -440,6 +440,10 @@ class AvgPool_CNN_Early(AMT):
         self.mfm = mfm
 
         if self.mfm:
+            if self.mfm == 'top':
+                self.mfm_dim = 3600
+            elif self.mfm == 'middle' or self.mfm == 'bottom':
+                self.mfm_dim = 3200            
             # 1frame = 8 token
             # self.mfm_proj = nn.Linear(3600, input_dim)
             self.avg_pool = torch.nn.AvgPool1d(8)            
@@ -447,7 +451,7 @@ class AvgPool_CNN_Early(AMT):
         self.norm_layer = Normalization(mode=norm_mode)
         self.onset = onset
 
-        self.feat_selector = nn.Linear(input_dim+3600, input_dim)
+        self.feat_selector = nn.Linear(input_dim+self.mfm_dim, input_dim)
         
         self.cnn = nn.Sequential(
             # layer 0
@@ -497,7 +501,7 @@ class AvgPool_CNN_Early(AMT):
             # discard the last frame of spec
             # because we don't have enough mfm_tokens for the last frame
         else:
-            mfm_tokens = torch.zeros(spec.shape[0], spec.shape[1]-1, 3600).to(spec.device)
+            mfm_tokens = torch.zeros(spec.shape[0], spec.shape[1]-1, self.mfm_dim).to(spec.device)
         x = torch.cat([spec[:,:-1], mfm_tokens], dim=-1)            
         # combine spec and mfm_tokens
 
@@ -540,8 +544,12 @@ class AvgPool_CNN_Early_proj(AMT):
         self.mfm = mfm
 
         if self.mfm:
+            if self.mfm == 'top':
+                self.mfm_dim = 3600
+            elif self.mfm == 'middle' or self.mfm == 'bottom':
+                self.mfm_dim = 3200                        
             # 1frame = 8 token
-            self.mfm_proj = nn.Linear(3600, input_dim)
+            self.mfm_proj = nn.Linear(self.mfm_dim, input_dim)
             self.avg_pool = torch.nn.AvgPool1d(8)            
 
         self.norm_layer = Normalization(mode=norm_mode)
@@ -620,7 +628,7 @@ class AvgPool_CNN_Early_proj(AMT):
         return output
     
 
-class AvgPool_CNN_Late_mfm_proj(AMT):
+class AvgPool_CNN_Late_proj(AMT):
     def __init__(self,
                  spec_layer,
                  norm_mode,
@@ -640,8 +648,12 @@ class AvgPool_CNN_Late_mfm_proj(AMT):
         self.mfm = mfm
 
         if self.mfm:
+            if self.mfm == 'top':
+                self.mfm_dim = 3600
+            elif self.mfm == 'middle' or self.mfm == 'bottom':
+                self.mfm_dim = 3200                
             # 1frame = 8 token
-            self.mfm_proj = nn.Linear(3600, input_dim)
+            self.mfm_proj = nn.Linear(self.mfm_dim, input_dim)
             self.avg_pool = torch.nn.AvgPool1d(8)            
 
         self.norm_layer = Normalization(mode=norm_mode)
@@ -742,12 +754,16 @@ class AvgPool_CNN_Late(AMT):
         if self.mfm:
             # 1frame = 8 token
             # self.mfm_proj = nn.Linear(3600, input_dim)
+            if self.mfm == 'top':
+                self.mfm_dim = 3600
+            elif self.mfm == 'middle' or self.mfm == 'bottom':
+                self.mfm_dim = 3200               
             self.avg_pool = torch.nn.AvgPool1d(8)            
 
         self.norm_layer = Normalization(mode=norm_mode)
         self.onset = onset
 
-        self.feat_selector = nn.Linear(input_dim+3600, input_dim)
+        self.feat_selector = nn.Linear(input_dim+self.mfm_dim, input_dim)
         
         self.cnn = nn.Sequential(
             # layer 0
@@ -797,7 +813,7 @@ class AvgPool_CNN_Late(AMT):
             # discard the last frame of spec
             # because we don't have enough mfm_tokens for the last frame
         else:
-            mfm_tokens = torch.zeros(spec.shape[0], spec.shape[1]-1, 3600).to(spec.device)
+            mfm_tokens = torch.zeros(spec.shape[0], spec.shape[1]-1, self.mfm_dim).to(spec.device)
         x = torch.cat([spec[:,:-1], mfm_tokens], dim=-1)            
         # combine spec and mfm_tokens
         
