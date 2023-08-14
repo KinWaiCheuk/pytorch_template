@@ -835,6 +835,81 @@ class AvgPool_CNN_Late(AMT):
             
         return output
     
+class Baseline(AMT):
+    def __init__(self,
+                 spec_layer,
+                 norm_mode,
+                 input_dim,
+                 onset=False,
+                 hidden_dim=768,
+                 output_dim=88,
+                 task_kargs=None):
+        super().__init__(**task_kargs)
+        self.save_hyperparameters(ignore=['spec_layer'])
+        
+        self.mfm = False
+        # input_dim = 229
+        # which is the spectrogram bins
+        self.input_dim = input_dim
+        self.spec_layer = spec_layer
+
+        self.norm_layer = Normalization(mode=norm_mode)
+        self.onset = onset
+        
+        self.cnn = nn.Sequential(
+            # layer 0
+            nn.Conv2d(1, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 1
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 16, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 16),
+            nn.ReLU(),
+            # layer 2
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+            nn.Conv2d(hidden_dim // 16, hidden_dim // 8, (3, 3), padding=1),
+            nn.BatchNorm2d(hidden_dim // 8),
+            nn.ReLU(),
+            # layer 3
+            nn.MaxPool2d((1, 2)),
+            nn.Dropout(0.25),
+        )
+        self.fc = nn.Sequential(
+            nn.Linear((hidden_dim // 8) * (input_dim // 4), hidden_dim),
+            nn.Dropout(0.5)
+        )
+        
+        self.frame_classifier = nn.Linear(hidden_dim, output_dim)
+        if self.onset:
+            self.onset_classifier = nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, x, mfm_tokens=None):
+        # if x2 is given, do cross attention
+        spec = self.spec_layer(x) # (B, F, T)
+        spec = torch.log(spec+1e-8)
+        spec = spec.transpose(1,2) # (B, T, F)
+
+        spec = self.norm_layer(spec)
+   
+        # combine spec and mfm_tokens
+        x = self.cnn(spec.unsqueeze(1)) # (B, hidden_dim//8, T, F//4)
+        x = x.transpose(1,2).flatten(2)
+        x = self.fc(x) # (B, T, hidden_dim//8*F//4)
+        
+        pred_frame = self.frame_classifier(x)
+        if self.onset:
+            pred_onset = self.onset_classifier(x)
+
+            output = {"frame": pred_frame,
+                      "onset": pred_onset,
+                      "spec": spec}
+        else:
+            output = {"frame": pred_frame,
+                      "spec": spec}
+            
+        return output
+    
 
 class PositionalEncoder(torch.nn.Module):
     def __init__(self, d_model, max_seq_len=641):
