@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from utils.text_processing import GreedyDecoder
-import fastwer
+import torchmetrics.text as text_metrics
 import pandas as pd
 
 
@@ -14,6 +14,7 @@ class ASR(pl.LightningModule):
         super().__init__()
         self.text_transform = text_transform        
         self.lr = lr
+        self.wer = text_metrics.WER()
 
     def training_step(self, batch, batch_idx):
         x = batch['waveforms']
@@ -45,8 +46,8 @@ class ASR(pl.LightningModule):
                                                            batch['labels'],
                                                            batch['label_lengths'],
                                                            self.text_transform)
-            PER_batch = fastwer.score(decoded_preds, decoded_targets)/100            
-            valid_metrics['valid_PER'] = PER_batch
+            WER_batch = self.wer(decoded_preds, decoded_targets)     
+            valid_metrics['valid_WER'] = WER_batch
             if batch_idx==0:
                 self.log_images(spec, f'Valid/spectrogram')
                 self._log_text(decoded_preds, 'Valid/texts_pred', max_sentences=4)
@@ -73,8 +74,8 @@ class ASR(pl.LightningModule):
                                                            batch['labels'],
                                                            batch['label_lengths'],
                                                            self.text_transform)
-            PER_batch = fastwer.score(decoded_preds, decoded_targets)/100            
-            valid_metrics['test_PER'] = PER_batch
+            WER_batch = self.wer(decoded_preds, decoded_targets)
+            valid_metrics['test_WER'] = WER_batch
             if batch_idx<4:
                 self.log_images(spec, f'Test/spectrogram')
                 self._log_text(decoded_preds, 'Test/texts_pred', max_sentences=1)

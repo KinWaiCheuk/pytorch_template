@@ -1,9 +1,7 @@
-pybind11
 git+https://github.com/KinWaiCheuk/nnAudio.git#subdirectory=Installation
 AudioLoader==0.1.3
 torchmetrics==0.6.0
 setuptools==59.5.0
-fastwer
 pandas
 tabulate
 mido
