@@ -195,7 +195,10 @@ class Attention_Early_CNN(AMT):
         if self.mfm:
             # the mfm tokens (top layer prior) have 3600 feature dimension
             # self.mfm_proj = nn.Linear(3600, attn_embed_dim)
-            mfm_dim = 3600
+            if self.mfm == 'top':
+                mfm_dim = 3600
+            elif self.mfm == 'middle' or self.mfm == 'bottom':
+                mfm_dim = 3200
             self.mfm_pos_encoder = PositionalEncoder(mfm_dim, max_seq_len=8192)            
             kdim = mfm_dim
             vdim = mfm_dim
@@ -315,7 +318,10 @@ class Attention_Late_CNN(AMT):
         if self.mfm:
             # the mfm tokens (top layer prior) have 3600 feature dimension
             # self.mfm_proj = nn.Linear(3600, attn_embed_dim)
-            mfm_dim = 3600
+            if self.mfm == 'top':
+                mfm_dim = 3600
+            elif self.mfm == 'middle' or self.mfm == 'bottom':
+                mfm_dim = 3200
             self.mfm_pos_encoder = PositionalEncoder(mfm_dim, max_seq_len=8192)            
             kdim = mfm_dim
             vdim = mfm_dim

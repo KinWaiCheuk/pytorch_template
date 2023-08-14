@@ -46,7 +46,8 @@ def my_app(cfg):
         cfg.model.args.input_dim = cfg.spec_layer.args.n_mels
 
     if cfg.mfm_path:
-        cfg.model.args.mfm = True
+        level = cfg.mfm_path.split('_')[-2]
+        cfg.model.args.mfm = level
         exp_name = f"AMT-token_offset-{cfg.spec_layer.type}-{cfg.model.type}-mfm"
     else:
         cfg.model.args.mfm = False
