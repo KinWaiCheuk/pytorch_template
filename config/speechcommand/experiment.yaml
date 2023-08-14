@@ -11,19 +11,15 @@ download: False
 dataset:
     train:
         subset: "training"
-        root: './'
+        root: '../'
         download: ${download}
-        
-        
-    test:
-        subset: "testing"
-        root: './'
-        download: ${download}
-        
-
     val:
         subset: "validation"
-        root: './'
+        root: '../'
+        download: ${download}
+    test:
+        subset: "testing"
+        root: '../'
         download: ${download}
         
 dataloader:

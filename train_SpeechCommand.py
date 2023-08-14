@@ -3,8 +3,7 @@ from nnAudio import Spectrogram
 # from AudioLoader.Speech import TIMIT
 
 # Libraries related to PyTorch
-import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 import torchaudio
 # Libraries related to PyTorch Lightning
 import pytorch_lightning as pl
@@ -13,7 +12,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
 from tasks.speech_command import SpeechCommand
-import models.Models as Model
+import models.speech_command_models as Model
 from utils.text_processing import speech_command_processing, Speech_Command_label_Transform
 
 # Libraries related to hydra
@@ -67,8 +66,7 @@ def main(cfg):
     elif cfg.spec_layer.type=='MelSpectrogram':
         cfg.model.args.input_dim = cfg.spec_layer.args.n_mels *101 
 
-    model = SpeechCommand(getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args), 
-                **cfg.pl)
+    model = getattr(Model, cfg.model.type)(spec_layer, **cfg.model.args, **cfg.pl)
     checkpoint_callback = ModelCheckpoint(monitor="val_CE_loss",
                                           filename="{epoch:02d}-{val_CE_loss:.2f}",  
                                           save_top_k=3,
