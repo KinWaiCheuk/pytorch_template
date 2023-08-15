@@ -11,7 +11,7 @@ learning_rate: 1e-5
 epochs: 1000
 download: False
 data_root: '/data2/kinwai'
-mfm_path: null #'/data2/kinwai/mfm_features_top_koyama/' 
+mfm_path: # '/data2/kinwai/mfm_features_top_koyama/' 
 
 dataset:
     train:
