@@ -1,0 +1,12 @@
+train:
+    subset: "training"
+    root: '../'
+    download: ${download}
+val:
+    subset: "validation"
+    root: '../'
+    download: ${download}
+test:
+    subset: "testing"
+    root: '../'
+    download: ${download}

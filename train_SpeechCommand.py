@@ -11,7 +11,6 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 
 # custom packages
-from tasks.speech_command import SpeechCommand
 import models.speech_command_models as Model
 from utils.text_processing import speech_command_processing, Speech_Command_label_Transform
 
@@ -43,20 +42,17 @@ def main(cfg):
     train_loader = DataLoader(train_dataset,
                               **cfg.dataloader.train,
                               collate_fn=lambda x: speech_command_processing(x,
-                                                                   speech_command_transform ,
-                                                                   **cfg.data_processing))
+                                                                   speech_command_transform))
 
     valid_loader = DataLoader(valid_dataset,
                               **cfg.dataloader.valid,
                               collate_fn=lambda x: speech_command_processing(x,
-                                                                   speech_command_transform,
-                                                                   **cfg.data_processing))
+                                                                   speech_command_transform))
     
     test_loader = DataLoader(test_dataset,
                              **cfg.dataloader.test,
                              collate_fn=lambda x: speech_command_processing(x,
-                                                                  speech_command_transform,
-                                                                  **cfg.data_processing)) 
+                                                                  speech_command_transform)) 
 
     cfg.model.args.output_dim = len(speech_command_transform.labels) # number of classes equals to number of entries in the dict
            

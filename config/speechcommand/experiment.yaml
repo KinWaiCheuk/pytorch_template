@@ -7,21 +7,7 @@ learning_rate: 1e-4
 epochs: 400
 output_mode: 'ph'
 download: False
-
-dataset:
-    train:
-        subset: "training"
-        root: '../'
-        download: ${download}
-    val:
-        subset: "validation"
-        root: '../'
-        download: ${download}
-    test:
-        subset: "testing"
-        root: '../'
-        download: ${download}
-        
+  
 dataloader:
     train:
         batch_size: 16
@@ -38,14 +24,10 @@ dataloader:
         num_workers: 8
         pin_memory: True
         
-data_processing:
-    input_key: 'waveform'
-    label_key: 0 # will be overwritten inside the code
-    downsample_factor: ${hop_length}
-        
 pl: 
     lr: ${learning_rate}  
     
 defaults:    
     - spec_layer: Mel
+    - dataset: SpeechCommand
     - model: simpleLinear_flatten

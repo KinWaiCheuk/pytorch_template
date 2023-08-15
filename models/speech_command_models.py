@@ -13,7 +13,7 @@ class simpleLinear_flatten(SpeechCommand):
                  lr
                  ):
         super().__init__(lr)
-        
+        self.save_hyperparameters(ignore=['spec_layer'])        
         self.spec_layer = spec_layer
         self.linear1 = nn.Linear(input_dim,hidden_dim1)
         self.linear2 = nn.Linear(hidden_dim1,hidden_dim2)

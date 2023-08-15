@@ -50,13 +50,13 @@ class Speech_Command_label_Transform:
 
 
 
-def speech_command_processing(data, Speech_Command_label_transform, input_key='waveform', label_key='utterance', downsample_factor=320):
+def speech_command_processing(data, label_transform):
     waveforms = []
     labels = []
 
     for batch in data:
         waveforms.append(batch[0].squeeze(0)) 
-        label = Speech_Command_label_transform.label_to_index(batch[2])
+        label = label_transform.label_to_index(batch[2])
         labels.append(label)
                 
     waveform_padded = nn.utils.rnn.pad_sequence(waveforms, batch_first=True)
