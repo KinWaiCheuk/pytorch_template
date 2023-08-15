@@ -107,7 +107,7 @@ class CNN_LSTM(AMT):
                  output_dim=88,
                  task_kargs=None):
         super().__init__(**task_kargs)
-        self.save_hyperparameters(ignore=['spec_layer', 'task_kargs'])
+        self.save_hyperparameters(ignore=['spec_layer'])
         
         self.spec_layer = spec_layer
         self.norm_layer = Normalization(mode=norm_mode)

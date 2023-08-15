@@ -20,7 +20,6 @@ class AMT(pl.LightningModule):
                  min_midi
                 ):
         super().__init__()
-        self.save_hyperparameters()
         self.evaluator = Evaluator(
             hop_length,
             sr,
@@ -28,6 +27,7 @@ class AMT(pl.LightningModule):
             onset_threshold=0.5,
             frame_threshold=0.5
             )
+        self.lr = lr
         
     def step(self, batch):
         # when self.hparams.onset==False
@@ -160,7 +160,7 @@ class AMT(pl.LightningModule):
 
     def configure_optimizers(self):
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 #         scheduler = TriStageLRSchedule(optimizer,
 #                                        [1e-8, self.lr, 1e-8],
 #                                        [0.2,0.6,0.2],
