@@ -1,6 +1,6 @@
 # Useful github libries
 from nnAudio import Spectrogram
-from AudioLoader.music.amt import MAPS
+import AudioLoader.music.amt as Dataset #MAPS
 
 # Libraries related to PyTorch
 import torch
@@ -29,9 +29,13 @@ import pickle
 def my_app(cfg):       
     cfg.data_root = to_absolute_path(cfg.data_root)
     # Loading dataset
-    train_dataset = MAPS(**cfg.dataset.train)
-    test_dataset = MAPS(**cfg.dataset.test)
-    train_dataset, valid_dataset = random_split(train_dataset, [110, 29], generator=torch.Generator().manual_seed(0))
+    train_dataset = getattr(Dataset, cfg.dataset.name)(**cfg.dataset.train)
+    test_dataset = getattr(Dataset, cfg.dataset.name)(**cfg.dataset.test)
+    # split the training set into 110 training samples and 29 validation samples
+    if cfg.dataset.name == "MAPS":
+        train_dataset, valid_dataset = random_split(train_dataset, [110, 29], generator=torch.Generator().manual_seed(0))
+    elif cfg.dataset.name == "MusicNet":
+        train_dataset, valid_dataset = random_split(train_dataset, [300, 20], generator=torch.Generator().manual_seed(0))
 
     # Create dataloaders
     train_loader = DataLoader(train_dataset, **cfg.dataloader.train)
